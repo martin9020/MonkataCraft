@@ -14,6 +14,9 @@ MonkaCraft_Claude_Code_Prompt.md
 MonkaCraft_CLAUDE_MD_Orchestration.md
 CLAUDE.md
 
+# Secrets
+.env
+
 # OS files
 Thumbs.db
 Desktop.ini

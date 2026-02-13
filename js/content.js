@@ -97,53 +97,12 @@
    * _save() — Serialize the current in-memory data object to localStorage.
    * Also triggers auto-backup to Cloudinary if configured.
    */
-  var _cloudSyncTimer = null;
-
   function _save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(_data));
     } catch (e) {
       console.error('[ContentStore] Failed to save to localStorage:', e);
     }
-    // Debounced auto-sync to Cloudinary (waits 2s after last change)
-    _scheduleCloudSync();
-  }
-
-  function _scheduleCloudSync() {
-    if (_cloudSyncTimer) clearTimeout(_cloudSyncTimer);
-    _cloudSyncTimer = setTimeout(_syncToCloud, 2000);
-  }
-
-  function _syncToCloud() {
-    var cloudUrl = localStorage.getItem(CLOUD_JSON_KEY);
-    var cloudName = localStorage.getItem('monkacraft_cloud_name');
-    var uploadPreset = localStorage.getItem('monkacraft_upload_preset');
-
-    // Only sync if Cloudinary is configured AND a cloud backup has been set up
-    if (!cloudName || !uploadPreset || !cloudUrl) return;
-
-    var jsonStr = JSON.stringify(_data, null, 2);
-    var blob = new Blob([jsonStr], { type: 'application/json' });
-    var formData = new FormData();
-    formData.append('file', blob, 'monkacraft_content.json');
-    formData.append('upload_preset', uploadPreset);
-    formData.append('public_id', 'monkacraft_content');
-
-    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
-      method: 'POST',
-      body: formData
-    })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.secure_url) {
-          console.log('[ContentStore] Auto-synced to Cloudinary');
-          // Update URL in case it changed
-          localStorage.setItem(CLOUD_JSON_KEY, data.secure_url);
-        }
-      })
-      .catch(function (err) {
-        console.warn('[ContentStore] Cloud sync failed:', err.message);
-      });
   }
 
   /**

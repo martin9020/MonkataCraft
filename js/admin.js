@@ -81,6 +81,21 @@
   }
 
   /**
+   * SHA-1 hash via Web Crypto API (used for Cloudinary API signatures).
+   * @param {string} str
+   * @returns {Promise<string>} hex digest
+   */
+  async function sha1Hex(str) {
+    var encoder = new TextEncoder();
+    var data = encoder.encode(str);
+    var hashBuffer = await crypto.subtle.digest('SHA-1', data);
+    var hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  /**
    * Extract YouTube video ID from various URL formats.
    * @param {string} url
    * @returns {string|null}
@@ -218,8 +233,8 @@
     updateStats();
     renderContentList();
     loadSettingsValues();
-    setDateDefaults();
     restoreAllDrafts();
+    setDateDefaults();
   }
 
   /** Update the stats counters in the top bar. */
@@ -1070,12 +1085,16 @@
     $('settings-save-cloudinary').addEventListener('click', function () {
       var cloudName = $('settings-cloud-name').value.trim();
       var uploadPreset = $('settings-upload-preset').value.trim();
+      var apiKey = $('settings-api-key').value.trim();
+      var apiSecret = $('settings-api-secret').value.trim();
       if (!cloudName || !uploadPreset) {
         showError('\u041C\u043E\u043B\u044F \u043F\u043E\u043F\u044A\u043B\u043D\u0438 \u0434\u0432\u0435\u0442\u0435 \u043F\u043E\u043B\u0435\u0442\u0430! / Please fill both fields!');
         return;
       }
       localStorage.setItem('monkacraft_cloud_name', cloudName);
       localStorage.setItem('monkacraft_upload_preset', uploadPreset);
+      if (apiKey) localStorage.setItem('monkacraft_api_key', apiKey);
+      if (apiSecret) localStorage.setItem('monkacraft_api_secret', apiSecret);
       $('settings-cloudinary-status').innerHTML = '\u{1F7E2} \u0421\u0432\u044A\u0440\u0437\u0430\u043D / Connected';
       $('settings-cloudinary-status').style.color = 'var(--color-primary)';
       showSuccess('\u2601\uFE0F Cloudinary \u0437\u0430\u043F\u0430\u0437\u0435\u043D\u043E! / Cloudinary saved!');
@@ -1163,10 +1182,16 @@
     });
 
     // ---- Cloud Backup: Upload JSON to Cloudinary ----
-    $('settings-cloud-backup').addEventListener('click', function () {
+    // Uses signed upload with overwrite=true so the same file gets replaced
+    // every time, keeping the URL stable. Requires API Key + API Secret.
+    // Falls back to unsigned upload (timestamped name) if no API credentials.
+    $('settings-cloud-backup').addEventListener('click', async function () {
       var cloudName = localStorage.getItem('monkacraft_cloud_name');
       var uploadPreset = localStorage.getItem('monkacraft_upload_preset');
-      if (!cloudName || !uploadPreset) {
+      var apiKey = localStorage.getItem('monkacraft_api_key');
+      var apiSecret = localStorage.getItem('monkacraft_api_secret');
+
+      if (!cloudName) {
         showError('\u274C \u041F\u044A\u0440\u0432\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0439 Cloudinary! / Configure Cloudinary first!');
         return;
       }
@@ -1178,34 +1203,66 @@
         streams: ContentStore.getAll('stream')
       };
       var jsonStr = JSON.stringify(rawData, null, 2);
-
       var blob = new Blob([jsonStr], { type: 'application/json' });
-      var formData = new FormData();
-      formData.append('file', blob, 'monkacraft_content.json');
-      formData.append('upload_preset', uploadPreset);
-      formData.append('public_id', 'monkacraft_content');
 
-      showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...');
+      var btn = $('settings-cloud-backup');
+      btn.disabled = true;
+      btn.textContent = '\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...';
 
-      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
-        method: 'POST',
-        body: formData
-      })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          console.log('[CloudBackup] Response:', JSON.stringify(data));
-          if (data.secure_url) {
-            $('settings-cloud-json-url').value = data.secure_url;
-            ContentStore.setCloudJsonUrl(data.secure_url);
-            alert('Cloud backup OK!\nURL: ' + data.secure_url);
-          } else {
-            alert('Cloud backup FAILED!\n' + JSON.stringify(data.error || data));
-          }
-        })
-        .catch(function (err) {
-          console.error('[CloudBackup] Error:', err);
-          alert('Cloud backup ERROR!\n' + err.message);
+      try {
+        var formData = new FormData();
+        formData.append('file', blob, 'monkacraft_content.json');
+
+        if (apiKey && apiSecret) {
+          // Signed upload — overwrite the same file every time
+          var publicId = 'monkacraft_content';
+          var timestamp = Math.floor(Date.now() / 1000);
+          // Parameters must be sorted alphabetically for signature
+          var paramsToSign = 'invalidate=true&overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp;
+          var signature = await sha1Hex(paramsToSign + apiSecret);
+
+          formData.append('public_id', publicId);
+          formData.append('overwrite', 'true');
+          formData.append('invalidate', 'true');
+          formData.append('timestamp', timestamp);
+          formData.append('api_key', apiKey);
+          formData.append('signature', signature);
+        } else if (uploadPreset) {
+          // Fallback: unsigned upload with timestamped name
+          var ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          formData.append('upload_preset', uploadPreset);
+          formData.append('public_id', 'monkacraft_backup_' + ts);
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = '\u2601\uFE0F \u041A\u0430\u0447\u0438 \u0432 Cloudinary (Cloud Backup)';
+          showError('\u274C \u0422\u0440\u044F\u0431\u0432\u0430 API Key + Secret \u0438\u043B\u0438 Upload Preset! / Need API Key + Secret or Upload Preset!');
+          return;
+        }
+
+        var res = await fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
+          method: 'POST',
+          body: formData
         });
+        var data = await res.json();
+
+        btn.disabled = false;
+        btn.innerHTML = '\u2601\uFE0F \u041A\u0430\u0447\u0438 \u0432 Cloudinary (Cloud Backup)';
+
+        if (data.secure_url) {
+          // Use unversioned URL for stable access
+          var stableUrl = 'https://res.cloudinary.com/' + cloudName + '/raw/upload/monkacraft_content.json';
+          var urlToSave = (apiKey && apiSecret) ? stableUrl : data.secure_url;
+          $('settings-cloud-json-url').value = urlToSave;
+          ContentStore.setCloudJsonUrl(urlToSave);
+          showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0435\u043D\u043E! / Uploaded! URL \u0437\u0430\u043F\u0430\u0437\u0435\u043D.');
+        } else {
+          showError('\u274C ' + (data.error ? data.error.message : 'Upload failed'));
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '\u2601\uFE0F \u041A\u0430\u0447\u0438 \u0432 Cloudinary (Cloud Backup)';
+        showError('\u274C \u0413\u0440\u0435\u0448\u043A\u0430: ' + err.message);
+      }
     });
 
     // ---- Cloud Backup: Save URL ----
@@ -1253,8 +1310,12 @@
     // Cloudinary
     var cloudName = localStorage.getItem('monkacraft_cloud_name') || '';
     var uploadPreset = localStorage.getItem('monkacraft_upload_preset') || '';
+    var apiKey = localStorage.getItem('monkacraft_api_key') || '';
+    var apiSecret = localStorage.getItem('monkacraft_api_secret') || '';
     $('settings-cloud-name').value = cloudName;
     $('settings-upload-preset').value = uploadPreset;
+    $('settings-api-key').value = apiKey;
+    $('settings-api-secret').value = apiSecret;
     if (cloudName && uploadPreset) {
       $('settings-cloudinary-status').innerHTML = '\u{1F7E2} \u0421\u0432\u044A\u0440\u0437\u0430\u043D / Connected';
       $('settings-cloudinary-status').style.color = 'var(--color-primary)';
@@ -1447,7 +1508,6 @@
         if (data.gametag) $('video-gametag').value = data.gametag;
         if (data.category) $('video-category').value = data.category;
         if (data.description) $('video-description').value = data.description;
-        if (data.date) $('video-date').value = data.date;
         if (data.type === 'upload') {
           $('video-type-upload').checked = true;
           $('video-youtube-section').style.display = 'none';
@@ -1467,7 +1527,6 @@
         if (data.gametag) $('screenshot-gametag').value = data.gametag;
         if (data.category) $('screenshot-category').value = data.category;
         if (data.caption) $('screenshot-caption').value = data.caption;
-        if (data.date) $('screenshot-date').value = data.date;
         if (data.uploadUrl) {
           $('screenshot-upload-url').value = data.uploadUrl;
           $('screenshot-preview-img').src = data.uploadUrl;
@@ -1479,14 +1538,12 @@
         if (data.content) $('post-editor').innerHTML = data.content;
         if (data.gametag) $('post-gametag').value = data.gametag;
         if (data.excerpt) $('post-excerpt').value = data.excerpt;
-        if (data.date) $('post-date').value = data.date;
         break;
       case 'stream':
         if (data.title) $('stream-title').value = data.title;
         if (data.url) $('stream-url').value = data.url;
         if (data.isLive) $('stream-is-live').checked = true;
         if (data.gametag) $('stream-gametag').value = data.gametag;
-        if (data.date) $('stream-date').value = data.date;
         break;
     }
   }
