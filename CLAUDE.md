@@ -405,3 +405,23 @@ Update this as phases complete:
 5. Update BUILD STATUS TRACKER after each phase
 6. When complete, report the THINGS REQUIRING HUMAN ACTION list
 7. Final deliverable: a fully working static website ready for GitHub Pages
+
+---
+
+## DEPLOYMENT PROGRESS (Last updated: 2026-02-13)
+
+### Completed:
+- [x] All 6 build phases complete (scaffold, CSS, layout, public pages, admin panel, README)
+- [x] GitHub repo created and files pushed
+- [x] GitHub Pages deployed
+
+### Remaining (human tasks for next session):
+- [ ] Create Cloudinary account + unsigned upload preset (cloudinary.com)
+- [ ] Create EmailJS account + Gmail service + template (emailjs.com)
+- [ ] Enter Cloudinary + EmailJS credentials in Admin → Settings tab
+- [ ] Replace placeholder YouTube IDs with Simeon's real content
+- [ ] Change default admin password from "monkacraft2024"
+
+### Admin Panel Access:
+- URL: /pages/admin.html (type directly, not linked in nav)
+- Default password: monkacraft2024

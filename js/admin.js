@@ -6,7 +6,7 @@
  * modals, and all admin interactions.
  *
  * Dependencies: content.js (ContentStore), cloudinary.js (CloudinaryUpload),
- *               emailjs.js (MonkaChatEmail)
+ *               emailjs.js (EmailService)
  *
  * Exposed globally as window.AdminPanel.
  */
@@ -631,6 +631,153 @@
   }
 
   // =====================================================================
+  // I-b) TAB 5 — CHAT WITH UNCLE (ЧАТ С ЧИЧИ)
+  // =====================================================================
+
+  function initChatTab() {
+    var sendBtn = $('chat-send-btn');
+    var clearBtn = $('chat-clear-history');
+    var uploadBtn = $('chat-upload-btn');
+
+    // Update remaining counter on tab load
+    updateChatRemaining();
+    renderChatHistory();
+
+    // Send button
+    sendBtn.addEventListener('click', function () {
+      var subject = $('chat-subject').value.trim();
+      var message = $('chat-message').value.trim();
+      var imageUrl = $('chat-upload-url') ? $('chat-upload-url').value : '';
+      var statusEl = $('chat-status');
+
+      if (!subject) {
+        showError('\u041D\u0430\u043F\u0438\u0448\u0438 \u0442\u0435\u043C\u0430! / Please enter a subject!');
+        return;
+      }
+      if (!message) {
+        showError('\u041D\u0430\u043F\u0438\u0448\u0438 \u0441\u044A\u043E\u0431\u0449\u0435\u043D\u0438\u0435! / Please enter a message!');
+        return;
+      }
+
+      if (typeof EmailService === 'undefined') {
+        showError('\u274C EmailJS \u043D\u0435 \u0435 \u043D\u0430\u043B\u0438\u0447\u0435\u043D! / EmailJS not available!');
+        return;
+      }
+
+      if (EmailService.getRemainingToday() <= 0) {
+        showError('\u0414\u043E\u0441\u0442\u0438\u0433\u043D\u0430 \u043B\u0438\u043C\u0438\u0442\u0430 \u0437\u0430 \u0434\u043D\u0435\u0441! / Daily limit reached!');
+        return;
+      }
+
+      // Show loading
+      statusEl.style.display = '';
+      statusEl.innerHTML = '<span style="color:var(--color-secondary);">\u{1F4E8} \u0418\u0437\u043F\u0440\u0430\u0449\u0430\u043C... / Sending...</span>';
+      sendBtn.disabled = true;
+
+      EmailService.send(subject, message, imageUrl || null)
+        .then(function () {
+          statusEl.innerHTML = '<span style="color:var(--color-primary);font-size:1.2rem;">\u2705 \u0418\u0437\u043F\u0440\u0430\u0442\u0435\u043D\u043E! \u0427\u0438\u0447\u0438 \u0449\u0435 \u0433\u043E \u0432\u0438\u0434\u0438 \u0441\u043A\u043E\u0440\u043E! \u{1F389} / Sent!</span>';
+          showSuccess('\u{1F4E8} \u0418\u0437\u043F\u0440\u0430\u0442\u0435\u043D\u043E \u043D\u0430 \u0427\u0438\u0447\u0438! / Sent to Uncle!');
+          // Clear form
+          $('chat-subject').value = '';
+          $('chat-message').value = '';
+          if ($('chat-upload-url')) $('chat-upload-url').value = '';
+          var previewEl = $('chat-upload-preview');
+          if (previewEl) previewEl.style.display = 'none';
+          // Refresh UI
+          updateChatRemaining();
+          renderChatHistory();
+        })
+        .catch(function (err) {
+          var msg = err && err.message ? err.message : '\u041D\u0435\u0449\u043E \u043D\u0435 \u0435 \u043D\u0430\u0440\u0435\u0434. \u041E\u043F\u0438\u0442\u0430\u0439 \u043F\u0430\u043A!';
+          statusEl.innerHTML = '<span style="color:var(--color-danger);">\u274C ' + escapeHtml(msg) + '</span>';
+        })
+        .finally(function () {
+          sendBtn.disabled = false;
+        });
+    });
+
+    // Upload button for chat image attachment
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', function () {
+        if (typeof CloudinaryUpload !== 'undefined' && CloudinaryUpload.open) {
+          CloudinaryUpload.open('image', function (result) {
+            if (result && result.secure_url) {
+              $('chat-upload-url').value = result.secure_url;
+              $('chat-preview-img').src = result.secure_url;
+              $('chat-upload-preview').style.display = '';
+            }
+          });
+        } else {
+          showError('\u041D\u0430\u0441\u0442\u0440\u043E\u0439 Cloudinary \u0432 \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438! / Configure Cloudinary in Settings first!');
+        }
+      });
+    }
+
+    // Clear history button
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        showConfirmModal(
+          '\u0418\u0437\u0447\u0438\u0441\u0442\u0438 \u0438\u0441\u0442\u043E\u0440\u0438\u044F\u0442\u0430? / Clear history?',
+          '\u0422\u043E\u0432\u0430 \u0449\u0435 \u0438\u0437\u0442\u0440\u0438\u0435 \u0432\u0441\u0438\u0447\u043A\u0438 \u0437\u0430\u043F\u0438\u0441\u0438 \u0437\u0430 \u0438\u0437\u043F\u0440\u0430\u0442\u0435\u043D\u0438 \u0441\u044A\u043E\u0431\u0449\u0435\u043D\u0438\u044F. / This will delete all sent message records.',
+          function () {
+            EmailService.clearHistory();
+            renderChatHistory();
+            showSuccess('\u{1F5D1}\uFE0F \u0418\u0441\u0442\u043E\u0440\u0438\u044F\u0442\u0430 \u0435 \u0438\u0437\u0447\u0438\u0441\u0442\u0435\u043D\u0430! / History cleared!');
+          }
+        );
+      });
+    }
+  }
+
+  /** Update the "remaining messages today" counter. */
+  function updateChatRemaining() {
+    var el = $('chat-remaining');
+    if (!el) return;
+    if (typeof EmailService === 'undefined') {
+      el.textContent = '';
+      return;
+    }
+    var remaining = EmailService.getRemainingToday();
+    el.innerHTML = '\u{1F4EC} \u041E\u0441\u0442\u0430\u0432\u0430\u0442 \u0442\u0438 <strong>' + remaining + '</strong> \u0441\u044A\u043E\u0431\u0449\u0435\u043D\u0438\u044F \u0437\u0430 \u0434\u043D\u0435\u0441 / <strong>' + remaining + '</strong> messages left today';
+    el.style.color = remaining <= 2 ? 'var(--color-warning)' : 'var(--color-text-dim)';
+  }
+
+  /** Render the chat message history list. */
+  function renderChatHistory() {
+    var container = $('chat-history');
+    var clearBtn = $('chat-clear-history');
+    if (!container) return;
+
+    if (typeof EmailService === 'undefined') {
+      container.innerHTML = '<p style="color:var(--color-text-dim);font-size:var(--fs-sm);">EmailJS \u043D\u0435 \u0435 \u043D\u0430\u043B\u0438\u0447\u0435\u043D.</p>';
+      return;
+    }
+
+    var history = EmailService.getHistory();
+    if (history.length === 0) {
+      container.innerHTML = '<p style="color:var(--color-text-dim);font-size:var(--fs-sm);">\u041D\u044F\u043C\u0430 \u0438\u0437\u043F\u0440\u0430\u0442\u0435\u043D\u0438 \u0441\u044A\u043E\u0431\u0449\u0435\u043D\u0438\u044F \u043E\u0449\u0435. / No messages sent yet.</p>';
+      if (clearBtn) clearBtn.style.display = 'none';
+      return;
+    }
+
+    if (clearBtn) clearBtn.style.display = '';
+
+    var html = '';
+    history.forEach(function (entry) {
+      html += '<div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--color-primary);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:700;color:var(--color-text);">\u2705 ' + escapeHtml(entry.subject) + '</span>' +
+          '<span style="font-size:0.8rem;color:var(--color-text-dim);">' + escapeHtml(entry.date) + '</span>' +
+        '</div>' +
+        '<div style="font-size:0.85rem;color:var(--color-text-dim);margin-top:2px;">' + escapeHtml(entry.preview) + '</div>' +
+      '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  // =====================================================================
   // J) CONTENT LIST — RENDER, SEARCH, EDIT, DELETE
   // =====================================================================
 
@@ -940,22 +1087,28 @@
         showError('\u041C\u043E\u043B\u044F \u043F\u043E\u043F\u044A\u043B\u043D\u0438 \u0432\u0441\u0438\u0447\u043A\u0438 \u043F\u043E\u043B\u0435\u0442\u0430! / Please fill all fields!');
         return;
       }
-      localStorage.setItem('monkacraft_emailjs_service', serviceId);
-      localStorage.setItem('monkacraft_emailjs_template', templateId);
-      localStorage.setItem('monkacraft_emailjs_key', publicKey);
+      // Use EmailService.saveConfig so the keys match what emailjs.js expects
+      if (typeof EmailService !== 'undefined' && EmailService.saveConfig) {
+        EmailService.saveConfig(serviceId, templateId, publicKey);
+      } else {
+        // Fallback: save directly with the correct key names
+        localStorage.setItem('monkacraft_emailjs_service_id', serviceId);
+        localStorage.setItem('monkacraft_emailjs_template_id', templateId);
+        localStorage.setItem('monkacraft_emailjs_public_key', publicKey);
+      }
       $('settings-emailjs-status').innerHTML = '\u{1F7E2} \u0413\u043E\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0442 / Ready to chat';
       $('settings-emailjs-status').style.color = 'var(--color-primary)';
       showSuccess('\u{1F4E7} EmailJS \u0437\u0430\u043F\u0430\u0437\u0435\u043D\u043E! / EmailJS saved!');
     });
 
     $('settings-test-emailjs').addEventListener('click', function () {
-      if (typeof MonkaChatEmail !== 'undefined' && MonkaChatEmail.sendTest) {
-        MonkaChatEmail.sendTest().then(function () {
+      if (typeof EmailService !== 'undefined' && EmailService.sendTest) {
+        EmailService.sendTest().then(function () {
           showSuccess('\u2705 \u0422\u0435\u0441\u0442\u043E\u0432 \u0438\u043C\u0435\u0439\u043B \u0438\u0437\u043F\u0440\u0430\u0442\u0435\u043D! / Test email sent!');
           $('settings-emailjs-status').innerHTML = '\u{1F7E2} \u0413\u043E\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0442';
           $('settings-emailjs-status').style.color = 'var(--color-primary)';
-        }).catch(function () {
-          showError('\u274C EmailJS \u0442\u0435\u0441\u0442\u044A\u0442 \u0441\u0435 \u043F\u0440\u043E\u0432\u0430\u043B\u0438! / EmailJS test failed!');
+        }).catch(function (err) {
+          showError('\u274C EmailJS \u0442\u0435\u0441\u0442\u044A\u0442 \u0441\u0435 \u043F\u0440\u043E\u0432\u0430\u043B\u0438! / EmailJS test failed!' + (err && err.message ? ' ' + err.message : ''));
         });
       } else {
         showError('\u274C EmailJS \u043D\u0435 \u0435 \u043D\u0430\u043B\u0438\u0447\u0435\u043D! / EmailJS not available!');
@@ -996,8 +1149,29 @@
     });
   }
 
+  /** Migrate old EmailJS keys to the correct ones used by emailjs.js */
+  function migrateEmailJSKeys() {
+    var oldKeys = [
+      ['monkacraft_emailjs_service', 'monkacraft_emailjs_service_id'],
+      ['monkacraft_emailjs_template', 'monkacraft_emailjs_template_id'],
+      ['monkacraft_emailjs_key', 'monkacraft_emailjs_public_key']
+    ];
+    oldKeys.forEach(function (pair) {
+      var oldVal = localStorage.getItem(pair[0]);
+      if (oldVal && !localStorage.getItem(pair[1])) {
+        localStorage.setItem(pair[1], oldVal);
+        localStorage.removeItem(pair[0]);
+      } else if (oldVal) {
+        localStorage.removeItem(pair[0]);
+      }
+    });
+  }
+
   /** Load saved settings values into the settings form fields. */
   function loadSettingsValues() {
+    // Migrate any old EmailJS keys first
+    migrateEmailJSKeys();
+
     // Cloudinary
     var cloudName = localStorage.getItem('monkacraft_cloud_name') || '';
     var uploadPreset = localStorage.getItem('monkacraft_upload_preset') || '';
@@ -1008,14 +1182,18 @@
       $('settings-cloudinary-status').style.color = 'var(--color-primary)';
     }
 
-    // EmailJS
-    var serviceId = localStorage.getItem('monkacraft_emailjs_service') || '';
-    var templateId = localStorage.getItem('monkacraft_emailjs_template') || '';
-    var publicKey = localStorage.getItem('monkacraft_emailjs_key') || '';
-    $('settings-emailjs-service').value = serviceId;
-    $('settings-emailjs-template').value = templateId;
-    $('settings-emailjs-key').value = publicKey;
-    if (serviceId && templateId && publicKey) {
+    // EmailJS — read from EmailService if available, otherwise direct localStorage
+    var emailConfig = (typeof EmailService !== 'undefined' && EmailService.getConfig)
+      ? EmailService.getConfig()
+      : {
+          serviceID:  localStorage.getItem('monkacraft_emailjs_service_id') || '',
+          templateID: localStorage.getItem('monkacraft_emailjs_template_id') || '',
+          publicKey:  localStorage.getItem('monkacraft_emailjs_public_key') || ''
+        };
+    $('settings-emailjs-service').value = emailConfig.serviceID;
+    $('settings-emailjs-template').value = emailConfig.templateID;
+    $('settings-emailjs-key').value = emailConfig.publicKey;
+    if (emailConfig.serviceID && emailConfig.templateID && emailConfig.publicKey) {
       $('settings-emailjs-status').innerHTML = '\u{1F7E2} \u0413\u043E\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0442 / Ready to chat';
       $('settings-emailjs-status').style.color = 'var(--color-primary)';
     }
@@ -1434,6 +1612,7 @@
       initScreenshotTab();
       initPostTab();
       initStreamTab();
+      initChatTab();
       initSettingsTab();
       setupAutoSave();
     });
