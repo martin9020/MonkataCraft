@@ -245,8 +245,20 @@
   // E) TAB SWITCHING
   // =====================================================================
 
+  // Map tab names to content types for filtering the content list
+  var TAB_TYPE_MAP = {
+    'video': 'video',
+    'screenshot': 'screenshot',
+    'blog': 'post',
+    'stream': 'stream'
+  };
+
+  var activeTab = 'video';
+
   /** Switch to a specific tab by name. */
   function switchTab(tabName) {
+    activeTab = tabName;
+
     // Update tab buttons
     var buttons = document.querySelectorAll('.admin-tab-btn');
     buttons.forEach(function (btn) {
@@ -263,6 +275,12 @@
     if (targetPanel) {
       targetPanel.classList.add('active');
     }
+
+    // Re-render content list filtered by active tab type
+    renderContentList();
+
+    // Ensure date fields have today's date
+    setDateDefaults();
   }
 
   // =====================================================================
@@ -785,9 +803,10 @@
   function renderContentList(filter) {
     var search = (filter || $('content-search').value || '').toLowerCase().trim();
 
-    // Gather all entries
+    // Gather entries — filter by active tab type if on a content tab
     var allEntries = [];
-    var types = ['video', 'screenshot', 'post', 'stream'];
+    var activeType = TAB_TYPE_MAP[activeTab];
+    var types = activeType ? [activeType] : ['video', 'screenshot', 'post', 'stream'];
     types.forEach(function (type) {
       var items = ContentStore.getAll(type);
       items.forEach(function (item) {
@@ -1142,6 +1161,65 @@
       // Reset input so the same file can be picked again
       this.value = '';
     });
+
+    // ---- Cloud Backup: Upload JSON to Cloudinary ----
+    $('settings-cloud-backup').addEventListener('click', function () {
+      var cloudName = localStorage.getItem('monkacraft_cloudinary_cloud_name');
+      var uploadPreset = localStorage.getItem('monkacraft_cloudinary_upload_preset');
+      if (!cloudName || !uploadPreset) {
+        showError('\u274C \u041F\u044A\u0440\u0432\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0439 Cloudinary! / Configure Cloudinary first!');
+        return;
+      }
+
+      var rawData = ContentStore._getData ? ContentStore._getData() : {
+        videos: ContentStore.getAll('video'),
+        screenshots: ContentStore.getAll('screenshot'),
+        posts: ContentStore.getAll('post'),
+        streams: ContentStore.getAll('stream')
+      };
+      var jsonStr = JSON.stringify(rawData, null, 2);
+
+      var blob = new Blob([jsonStr], { type: 'application/json' });
+      var formData = new FormData();
+      formData.append('file', blob, 'monkacraft_content.json');
+      formData.append('upload_preset', uploadPreset);
+      formData.append('resource_type', 'raw');
+      formData.append('public_id', 'monkacraft_content');
+      formData.append('overwrite', 'true');
+
+      showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...');
+
+      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.secure_url) {
+            $('settings-cloud-json-url').value = data.secure_url;
+            ContentStore.setCloudJsonUrl(data.secure_url);
+            showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0435\u043D\u043E \u0432 Cloudinary! / Uploaded to cloud!');
+          } else {
+            showError('\u274C ' + (data.error ? data.error.message : 'Upload failed'));
+          }
+        })
+        .catch(function (err) {
+          showError('\u274C \u0413\u0440\u0435\u0448\u043A\u0430: ' + err.message);
+        });
+    });
+
+    // ---- Cloud Backup: Save URL ----
+    $('settings-save-cloud-url').addEventListener('click', function () {
+      var url = $('settings-cloud-json-url').value.trim();
+      ContentStore.setCloudJsonUrl(url);
+      showSuccess('\u2601\uFE0F URL \u0437\u0430\u043F\u0430\u0437\u0435\u043D! / Cloud URL saved!');
+    });
+
+    // Load saved cloud URL on settings init
+    var savedCloudUrl = ContentStore.getCloudJsonUrl ? ContentStore.getCloudJsonUrl() : '';
+    if (savedCloudUrl) {
+      $('settings-cloud-json-url').value = savedCloudUrl;
+    }
 
     // ---- Nuclear Delete ----
     $('settings-nuclear').addEventListener('click', function () {

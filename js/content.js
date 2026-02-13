@@ -16,6 +16,7 @@
   'use strict';
 
   var STORAGE_KEY = 'monkacraft_content';
+  var CLOUD_JSON_KEY = 'monkacraft_cloud_json_url';
 
   /**
    * Determine the correct path to data/content.json based on the current
@@ -94,13 +95,57 @@
 
   /**
    * _save() — Serialize the current in-memory data object to localStorage.
+   * Also triggers auto-backup to Cloudinary if configured.
    */
+  var _cloudSyncTimer = null;
+
   function _save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(_data));
     } catch (e) {
       console.error('[ContentStore] Failed to save to localStorage:', e);
     }
+    // Debounced auto-sync to Cloudinary (waits 2s after last change)
+    _scheduleCloudSync();
+  }
+
+  function _scheduleCloudSync() {
+    if (_cloudSyncTimer) clearTimeout(_cloudSyncTimer);
+    _cloudSyncTimer = setTimeout(_syncToCloud, 2000);
+  }
+
+  function _syncToCloud() {
+    var cloudUrl = localStorage.getItem(CLOUD_JSON_KEY);
+    var cloudName = localStorage.getItem('monkacraft_cloudinary_cloud_name');
+    var uploadPreset = localStorage.getItem('monkacraft_cloudinary_upload_preset');
+
+    // Only sync if Cloudinary is configured AND a cloud backup has been set up
+    if (!cloudName || !uploadPreset || !cloudUrl) return;
+
+    var jsonStr = JSON.stringify(_data, null, 2);
+    var blob = new Blob([jsonStr], { type: 'application/json' });
+    var formData = new FormData();
+    formData.append('file', blob, 'monkacraft_content.json');
+    formData.append('upload_preset', uploadPreset);
+    formData.append('resource_type', 'raw');
+    formData.append('public_id', 'monkacraft_content');
+    formData.append('overwrite', 'true');
+
+    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
+      method: 'POST',
+      body: formData
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.secure_url) {
+          console.log('[ContentStore] Auto-synced to Cloudinary');
+          // Update URL in case it changed
+          localStorage.setItem(CLOUD_JSON_KEY, data.secure_url);
+        }
+      })
+      .catch(function (err) {
+        console.warn('[ContentStore] Cloud sync failed:', err.message);
+      });
   }
 
   /**
@@ -174,15 +219,32 @@
           return;
         }
 
-        // No local data — fetch the seed JSON
-        var path = _resolveContentPath();
+        // No local data — read config.json for Cloudinary URL, then fetch content
+        var basePath = _resolveContentPath().replace('content.json', '');
+        var configPath = basePath + 'config.json';
+        var localPath = basePath + 'content.json';
 
-        fetch(path)
-          .then(function (response) {
-            if (!response.ok) {
-              throw new Error('HTTP ' + response.status + ' fetching ' + path);
+        // Step 1: Try to get cloud URL from config.json (committed to repo)
+        fetch(configPath)
+          .then(function (r) { return r.ok ? r.json() : {}; })
+          .then(function (config) {
+            var cloudUrl = (config && config.cloudBackupUrl) || localStorage.getItem(CLOUD_JSON_KEY);
+
+            if (cloudUrl) {
+              // Step 2a: Fetch from Cloudinary
+              return fetch(cloudUrl)
+                .then(function (r) {
+                  if (!r.ok) throw new Error('Cloud HTTP ' + r.status);
+                  return r.json();
+                })
+                .catch(function (err) {
+                  console.warn('[ContentStore] Cloud fetch failed, trying local:', err.message);
+                  // Step 2b: Cloudinary failed, fall back to local file
+                  return fetch(localPath).then(function (r) { return r.ok ? r.json() : {}; });
+                });
             }
-            return response.json();
+            // No cloud URL — use local file
+            return fetch(localPath).then(function (r) { return r.ok ? r.json() : {}; });
           })
           .then(function (json) {
             _data = _ensureStructure(json);
@@ -191,12 +253,23 @@
           })
           .catch(function (err) {
             console.warn('[ContentStore] Could not fetch content.json:', err.message);
-            // Fall back to empty structure so the site still works
             _data = _ensureStructure({});
             _save();
             resolve(_data);
           });
       });
+    },
+
+    /** Get/set the Cloudinary JSON backup URL. */
+    getCloudJsonUrl: function () {
+      return localStorage.getItem(CLOUD_JSON_KEY) || '';
+    },
+    setCloudJsonUrl: function (url) {
+      if (url) {
+        localStorage.setItem(CLOUD_JSON_KEY, url);
+      } else {
+        localStorage.removeItem(CLOUD_JSON_KEY);
+      }
     },
 
     // -------------------------------------------------------------------

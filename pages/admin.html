@@ -508,6 +508,19 @@
               &#x1F4E4; &#x0418;&#x043C;&#x043F;&#x043E;&#x0440;&#x0442; (Restore Backup)
               <input type="file" id="settings-import" accept=".json" style="display:none;">
             </label>
+            <button type="button" id="settings-cloud-backup" class="btn btn-warning">
+              &#x2601;&#xFE0F; Качи в Cloudinary (Cloud Backup)
+            </button>
+          </div>
+          <div style="margin-bottom:var(--space-md);">
+            <label class="form-label">&#x2601;&#xFE0F; Cloud Backup URL:</label>
+            <div style="display:flex;gap:var(--space-sm);">
+              <input type="url" id="settings-cloud-json-url" class="form-input" placeholder="https://res.cloudinary.com/..." style="flex:1;">
+              <button type="button" id="settings-save-cloud-url" class="btn btn-primary btn-sm">&#x1F4BE;</button>
+            </div>
+            <p style="font-size:var(--fs-xs);color:var(--color-text-dim);margin-top:var(--space-xs);">
+              &#x1F512; &#x041D;&#x043E;&#x0432;&#x0438; &#x043F;&#x043E;&#x0441;&#x0435;&#x0442;&#x0438;&#x0442;&#x0435;&#x043B;&#x0438; &#x0449;&#x0435; &#x0437;&#x0430;&#x0440;&#x0435;&#x0434;&#x044F;&#x0442; &#x0434;&#x0430;&#x043D;&#x043D;&#x0438;&#x0442;&#x0435; &#x043E;&#x0442; Cloudinary / New visitors will load data from Cloudinary
+            </p>
           </div>
           <p style="font-size:var(--fs-sm);color:var(--color-warning);">
             &#x26A0;&#xFE0F; &#x0418;&#x043C;&#x043F;&#x043E;&#x0440;&#x0442;&#x044A;&#x0442; &#x0449;&#x0435; &#x0437;&#x0430;&#x043C;&#x0435;&#x043D;&#x0438; &#x0432;&#x0441;&#x0438;&#x0447;&#x043A;&#x043E;! / Import will replace everything!
