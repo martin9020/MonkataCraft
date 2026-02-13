@@ -1164,8 +1164,8 @@
 
     // ---- Cloud Backup: Upload JSON to Cloudinary ----
     $('settings-cloud-backup').addEventListener('click', function () {
-      var cloudName = localStorage.getItem('monkacraft_cloudinary_cloud_name');
-      var uploadPreset = localStorage.getItem('monkacraft_cloudinary_upload_preset');
+      var cloudName = localStorage.getItem('monkacraft_cloud_name');
+      var uploadPreset = localStorage.getItem('monkacraft_upload_preset');
       if (!cloudName || !uploadPreset) {
         showError('\u274C \u041F\u044A\u0440\u0432\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0439 Cloudinary! / Configure Cloudinary first!');
         return;

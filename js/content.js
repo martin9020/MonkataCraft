@@ -116,8 +116,8 @@
 
   function _syncToCloud() {
     var cloudUrl = localStorage.getItem(CLOUD_JSON_KEY);
-    var cloudName = localStorage.getItem('monkacraft_cloudinary_cloud_name');
-    var uploadPreset = localStorage.getItem('monkacraft_cloudinary_upload_preset');
+    var cloudName = localStorage.getItem('monkacraft_cloud_name');
+    var uploadPreset = localStorage.getItem('monkacraft_upload_preset');
 
     // Only sync if Cloudinary is configured AND a cloud backup has been set up
     if (!cloudName || !uploadPreset || !cloudUrl) return;
