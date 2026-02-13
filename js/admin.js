@@ -1185,7 +1185,6 @@
       formData.append('upload_preset', uploadPreset);
       formData.append('resource_type', 'raw');
       formData.append('public_id', 'monkacraft_content');
-      formData.append('overwrite', 'true');
 
       showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...');
 
