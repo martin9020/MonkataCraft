@@ -1187,22 +1187,24 @@
 
       showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...');
 
-      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/auto/upload', {
+      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
         method: 'POST',
         body: formData
       })
         .then(function (res) { return res.json(); })
         .then(function (data) {
+          console.log('[CloudBackup] Response:', JSON.stringify(data));
           if (data.secure_url) {
             $('settings-cloud-json-url').value = data.secure_url;
             ContentStore.setCloudJsonUrl(data.secure_url);
-            showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0435\u043D\u043E \u0432 Cloudinary! / Uploaded to cloud!');
+            alert('Cloud backup OK!\nURL: ' + data.secure_url);
           } else {
-            showError('\u274C ' + (data.error ? data.error.message : 'Upload failed'));
+            alert('Cloud backup FAILED!\n' + JSON.stringify(data.error || data));
           }
         })
         .catch(function (err) {
-          showError('\u274C \u0413\u0440\u0435\u0448\u043A\u0430: ' + err.message);
+          console.error('[CloudBackup] Error:', err);
+          alert('Cloud backup ERROR!\n' + err.message);
         });
     });
 

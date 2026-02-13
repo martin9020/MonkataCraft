@@ -129,7 +129,7 @@
     formData.append('upload_preset', uploadPreset);
     formData.append('public_id', 'monkacraft_content');
 
-    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/auto/upload', {
+    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
       method: 'POST',
       body: formData
     })
