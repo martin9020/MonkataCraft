@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Streams</title>
+  <meta name="description" content="MonkaCraft Streams — Watch MonkaS live on Minecraft & Roblox!">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- Main content -->
+  <main id="content" class="container page-streams">
+
+    <!-- 1. Page Header -->
+    <h1 class="page-title animate-in">&#127916; &#1057;&#1090;&#1088;&#1080;&#1081;&#1084;&#1086;&#1074;&#1077; / Streams</h1>
+
+    <!-- 2. Featured Stream -->
+    <section class="featured-stream animate-in">
+      <div id="stream-status" class="stream-status offline">
+        <span id="stream-status-text">&#128564; Offline &#8212; &#1054;&#1095;&#1072;&#1082;&#1074;&#1072;&#1081; &#1089;&#1082;&#1086;&#1088;&#1086;! / Check back soon!</span>
+      </div>
+      <div id="featured-stream-embed" class="stream-embed">
+        <!-- JS inserts iframe of the latest/live stream -->
+      </div>
+    </section>
+
+    <!-- 3. Filter Buttons -->
+    <div class="filter-group animate-in">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="Minecraft">&#9935;&#65039; Minecraft</button>
+      <button class="filter-btn" data-filter="Roblox">&#127922; Roblox</button>
+    </div>
+
+    <!-- 4. Past Streams Grid -->
+    <div class="grid grid-2" id="streams-grid"></div>
+
+  </main>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="../js/content.js"></script>
+  <script src="../js/app.js"></script>
+
+  <!-- Page-specific JS for Streams -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* -------------------------------------------------------
+       Helper: Extract YouTube video ID from various URL formats
+       Handles:
+         - https://www.youtube.com/watch?v=XXXX
+         - https://youtu.be/XXXX
+         - https://www.youtube.com/embed/XXXX
+         - https://youtube.com/watch?v=XXXX&feature=...
+       ------------------------------------------------------- */
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      var match;
+      // youtu.be/XXXX
+      match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      // youtube.com/embed/XXXX
+      match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      // youtube.com/watch?v=XXXX
+      match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      return null;
+    }
+
+    /* -------------------------------------------------------
+       Helper: Check if a URL is a YouTube URL
+       ------------------------------------------------------- */
+    function isYouTubeUrl(url) {
+      if (!url) return false;
+      return url.indexOf('youtube.com') !== -1 || url.indexOf('youtu.be') !== -1;
+    }
+
+    /* -------------------------------------------------------
+       Helper: Format date string to readable format
+       ------------------------------------------------------- */
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      var options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return d.toLocaleDateString('bg-BG', options);
+    }
+
+    /* -------------------------------------------------------
+       Helper: Get game tag CSS class
+       ------------------------------------------------------- */
+    function getTagClass(gameTag) {
+      if (!gameTag) return 'tag-other';
+      switch (gameTag.toLowerCase()) {
+        case 'minecraft': return 'tag-minecraft';
+        case 'roblox': return 'tag-roblox';
+        default: return 'tag-other';
+      }
+    }
+
+    /* -------------------------------------------------------
+       Render the featured stream embed
+       If a stream is live, show that one.
+       Otherwise show the most recent stream.
+       ------------------------------------------------------- */
+    function renderFeaturedStream() {
+      var statusEl = document.getElementById('stream-status');
+      var statusTextEl = document.getElementById('stream-status-text');
+      var embedEl = document.getElementById('featured-stream-embed');
+      if (!statusEl || !statusTextEl || !embedEl) return;
+
+      var streams = ContentStore.getAll('stream');
+      if (streams.length === 0) {
+        statusEl.className = 'stream-status offline';
+        statusTextEl.innerHTML = '\uD83D\uDE34 Offline \u2014 \u041E\u0447\u0430\u043A\u0432\u0430\u0439 \u0441\u043A\u043E\u0440\u043E! / Check back soon!';
+        embedEl.innerHTML = '<div class="empty-state"><div class="empty-icon">\uD83C\uDFAC</div><p>\u041D\u044F\u043C\u0430 \u0441\u0442\u0440\u0438\u0439\u043C\u043E\u0432\u0435 \u0437\u0430\u0441\u0435\u0433\u0430 / No streams yet</p></div>';
+        return;
+      }
+
+      // Find the live stream or the most recent one
+      var featured = null;
+      for (var i = 0; i < streams.length; i++) {
+        if (streams[i].isLive === true) {
+          featured = streams[i];
+          break;
+        }
+      }
+
+      // If no live stream, get the most recent by date
+      if (!featured) {
+        var sorted = streams.slice().sort(function (a, b) {
+          return new Date(b.date) - new Date(a.date);
+        });
+        featured = sorted[0];
+      }
+
+      // Update status indicator
+      if (featured.isLive) {
+        statusEl.className = 'stream-status live';
+        statusTextEl.innerHTML = '\uD83D\uDD34 CURRENTLY LIVE! / \u041D\u0410 \u0416\u0418\u0412\u041E!';
+      } else {
+        statusEl.className = 'stream-status offline';
+        statusTextEl.innerHTML = '\uD83D\uDE34 Offline \u2014 \u041E\u0447\u0430\u043A\u0432\u0430\u0439 \u0441\u043A\u043E\u0440\u043E! / Check back soon!';
+      }
+
+      // Embed the stream
+      var videoId = extractYouTubeId(featured.url);
+      if (videoId) {
+        embedEl.innerHTML =
+          '<iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=0&rel=0" ' +
+          'title="' + (featured.title || 'Stream') + '" ' +
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+          'allowfullscreen loading="lazy"></iframe>';
+      } else if (featured.url) {
+        // Non-YouTube URL (e.g. Twitch) — try iframe embed
+        embedEl.innerHTML =
+          '<iframe src="' + featured.url + '" ' +
+          'title="' + (featured.title || 'Stream') + '" ' +
+          'allowfullscreen loading="lazy"></iframe>';
+      } else {
+        embedEl.innerHTML = '<div class="empty-state"><div class="empty-icon">\uD83C\uDFAC</div><p>\u041D\u044F\u043C\u0430 \u043B\u0438\u043D\u043A \u043A\u044A\u043C \u0441\u0442\u0440\u0438\u0439\u043C\u0430 / No stream link available</p></div>';
+      }
+    }
+
+    /* -------------------------------------------------------
+       Render stream cards in the past streams grid
+       ------------------------------------------------------- */
+    function renderStreamCards(filter) {
+      var grid = document.getElementById('streams-grid');
+      if (!grid) return;
+
+      var streams;
+      if (filter && filter !== 'all') {
+        streams = ContentStore.getByTag('stream', filter);
+      } else {
+        streams = ContentStore.getAll('stream');
+      }
+
+      // Sort by date descending (newest first)
+      streams.sort(function (a, b) {
+        return new Date(b.date) - new Date(a.date);
+      });
+
+      if (streams.length === 0) {
+        grid.innerHTML =
+          '<div class="empty-state" style="grid-column: 1 / -1;">' +
+            '<div class="empty-icon">\uD83C\uDFAC</div>' +
+            '<p>\u041D\u044F\u043C\u0430 \u043D\u0430\u043C\u0435\u0440\u0435\u043D\u0438 \u0441\u0442\u0440\u0438\u0439\u043C\u043E\u0432\u0435 / No streams found</p>' +
+          '</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < streams.length; i++) {
+        var stream = streams[i];
+        var videoId = extractYouTubeId(stream.url);
+        var thumbUrl = stream.thumbnail || '';
+
+        // Auto-generate YouTube thumbnail if not provided
+        if (!thumbUrl && videoId) {
+          thumbUrl = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+        }
+
+        var tagClass = getTagClass(stream.gameTag);
+        var liveBadge = stream.isLive
+          ? '<span class="tag" style="background:rgba(255,34,68,0.2);color:#ff2244;border:1px solid rgba(255,34,68,0.4);margin-left:6px;">\uD83D\uDD34 LIVE</span>'
+          : '';
+
+        html +=
+          '<div class="card card-clickable animate-in" data-stream-url="' + (stream.url || '') + '" data-stream-id="' + (stream.id || '') + '">' +
+            (thumbUrl
+              ? '<img class="card-image" src="' + thumbUrl + '" alt="' + (stream.title || 'Stream') + '" loading="lazy">'
+              : '<div class="card-image" style="background:var(--color-surface);display:flex;align-items:center;justify-content:center;font-size:2rem;">\uD83C\uDFAC</div>'
+            ) +
+            '<h3 class="card-title">' + (stream.title || 'Stream') + '</h3>' +
+            '<div class="card-meta">' +
+              '<span>' + formatDate(stream.date) + '</span>' +
+              ' &middot; ' +
+              '<span class="tag ' + tagClass + '">' + (stream.gameTag || 'Other') + '</span>' +
+              liveBadge +
+            '</div>' +
+            (stream.description
+              ? '<p class="card-excerpt">' + stream.description.substring(0, 120) + (stream.description.length > 120 ? '...' : '') + '</p>'
+              : ''
+            ) +
+          '</div>';
+      }
+
+      grid.innerHTML = html;
+
+      // Re-apply animations to newly added cards
+      var newCards = grid.querySelectorAll('.animate-in');
+      for (var j = 0; j < newCards.length; j++) {
+        (function (el, idx) {
+          setTimeout(function () {
+            el.classList.add('visible');
+          }, idx * 80 + 50);
+        })(newCards[j], j);
+      }
+    }
+
+    /* -------------------------------------------------------
+       Handle card clicks — embed the clicked stream in the
+       featured area and scroll to it.
+       ------------------------------------------------------- */
+    function handleStreamCardClick(e) {
+      var card = e.target.closest('.card-clickable');
+      if (!card) return;
+
+      var url = card.getAttribute('data-stream-url');
+      if (!url) return;
+
+      var embedEl = document.getElementById('featured-stream-embed');
+      if (!embedEl) return;
+
+      var videoId = extractYouTubeId(url);
+      if (videoId) {
+        embedEl.innerHTML =
+          '<iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0" ' +
+          'title="Stream" ' +
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+          'allowfullscreen></iframe>';
+      } else {
+        embedEl.innerHTML =
+          '<iframe src="' + url + '" title="Stream" allowfullscreen></iframe>';
+      }
+
+      // Scroll to the featured stream area
+      var featuredSection = document.querySelector('.featured-stream');
+      if (featuredSection) {
+        featuredSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    /* -------------------------------------------------------
+       Filter button click handlers
+       ------------------------------------------------------- */
+    function initFilters() {
+      var filterGroup = document.querySelector('.filter-group');
+      if (!filterGroup) return;
+
+      filterGroup.addEventListener('click', function (e) {
+        var btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+
+        // Update active state
+        var allBtns = filterGroup.querySelectorAll('.filter-btn');
+        for (var i = 0; i < allBtns.length; i++) {
+          allBtns[i].classList.remove('active');
+        }
+        btn.classList.add('active');
+
+        // Re-render with filter
+        var filter = btn.getAttribute('data-filter');
+        renderStreamCards(filter);
+      });
+    }
+
+    /* -------------------------------------------------------
+       Attach click listener for stream cards
+       ------------------------------------------------------- */
+    function initCardClicks() {
+      var grid = document.getElementById('streams-grid');
+      if (!grid) return;
+      grid.addEventListener('click', handleStreamCardClick);
+    }
+
+    /* -------------------------------------------------------
+       Initialize when content is ready
+       ------------------------------------------------------- */
+    window.addEventListener('contentReady', function () {
+      renderFeaturedStream();
+      renderStreamCards('all');
+      initFilters();
+      initCardClicks();
+    });
+
+  })();
+  </script>
+
+</body>
+</html>

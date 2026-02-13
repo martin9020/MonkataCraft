@@ -1,0 +1,21 @@
+Hi chat, we are doing the magic that all kid wants to happen.
+
+I want to make a present for my nephew's birthday and we want to make this happen without you losing the 200 000 tokens context, and here we have some initial brainstorm.
+Create your initial claude.md from this prompt, in the current folder that will be a project folder for my nephew. Folder:"MonkaCraft", here are the .MD files that we have created as your tasks that you need to complete: c:\Users\Daradudai\MonkaCraft\MonkaCraft_Claude_Code_Prompt.md & c:\Users\Daradudai\MonkaCraft\MonkaCraft_CLAUDE_MD_Orchestration.md
+
+Original:
+Hi chat, we are doing the magic that all kid wants to happen.
+  I want to make a present for my nephew's birthday and we want to make this happen without you losing the 200 000 tokens context, im working remotely, through SSH connection to write with you at the moment.          
+  We have brainstormed an initial .md files.                                                                                                                                                                             
+  Create your initial claude.md from this prompt (after :),                                                                                                                                                              
+  This is your task at the moment that i will copy-paste in the next prompt -                                                                                                                                            
+                                                                                                                                                                                                                           
+  "I want you to orchestrate the whole thing, create skills, create  agents, and skills that will fullfil; the task. Give me inital prompt so the following tasks in the *.md files will be fullfiled without giving me    
+  questions, only thing i want from you is to give me back tasks that you can't complete because of UI, or something that needs approval, something needs clicking etc... etc.."       
+                                                                                                                                                                                                                           
+  Here is the prompt (after :):                                                                                                                                                                                            
+   Hi chat, we are doing the magic that all kid wants to happen.                                                                                                                                                           
+                                                                                                                                                                                                                           
+   I want to make a present for my nephew's birthday and we want to make this happen without you losing the 200 000 tokens context, and here we have some initial brainstorm.                                              
+   Create your initial claude.md from this prompt, in the current folder that will be a project folder for my nephew. Folder:"MonkaCraft", here are the .MD files that we have created as your tasks that you need to      
+  complete: c:\Users\Daradudai\MonkaCraft\MonkaCraft_Claude_Code_Prompt.md & c:\Users\Daradudai\MonkaCraft\MonkaCraft_CLAUDE_MD_Orchestration.md     

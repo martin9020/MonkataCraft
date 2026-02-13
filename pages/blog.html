@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Blog</title>
+  <meta name="description" content="MonkaCraft Blog — Gaming news, tips, and stories from MonkaS!">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- Main content -->
+  <main id="content" class="container page-blog">
+
+    <!-- 1. Page Header -->
+    <div class="page-header">
+      <h1 class="animate-in">📝 Блог / Blog</h1>
+      <p class="animate-in">Gaming stories, tips &amp; news from MonkaS</p>
+    </div>
+
+    <!-- 2. Blog Posts Container -->
+    <div id="blog-posts">
+      <!-- JS populates blog post accordion cards here -->
+    </div>
+
+  </main>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="../js/content.js"></script>
+  <script src="../js/app.js"></script>
+
+  <!-- Page-specific JS for Blog -->
+  <script>
+  (function () {
+    'use strict';
+
+    /**
+     * Return the CSS class for a gameTag badge.
+     */
+    function tagClass(gameTag) {
+      var tag = (gameTag || '').toLowerCase();
+      if (tag === 'minecraft') return 'tag-minecraft';
+      if (tag === 'roblox') return 'tag-roblox';
+      return 'tag-other';
+    }
+
+    /**
+     * Format a date string as a short human-readable date.
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('bg-BG', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    /**
+     * Strip HTML tags from a string.
+     */
+    function stripHtml(html) {
+      if (!html) return '';
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || '';
+    }
+
+    /**
+     * Build the excerpt: use the description field if available,
+     * otherwise strip HTML from content and take first 150 chars.
+     */
+    function getExcerpt(post) {
+      if (post.description) return post.description;
+      var plain = stripHtml(post.content || '');
+      if (plain.length > 150) return plain.substring(0, 150) + '...';
+      return plain;
+    }
+
+    /**
+     * Build an accordion blog card for a single post.
+     */
+    function buildBlogPost(post) {
+      var article = document.createElement('article');
+      article.className = 'blog-post animate-in';
+      article.setAttribute('data-id', post.id || '');
+
+      var headerHTML =
+        '<div class="blog-post-header" role="button" tabindex="0" aria-expanded="false">' +
+          '<div>' +
+            '<h3 style="font-family: var(--font-heading); font-size: var(--fs-xs); color: var(--color-text-bright); margin-bottom: var(--space-sm); line-height:1.6;">' +
+              (post.title || 'Untitled') +
+            '</h3>' +
+            '<div style="display:flex; align-items:center; gap: var(--space-sm); flex-wrap:wrap;">' +
+              '<span class="tag ' + tagClass(post.gameTag) + '">' + (post.gameTag || '') + '</span>' +
+              '<span style="font-size: var(--fs-sm); color: var(--color-text-dim);">' + formatDate(post.date) + '</span>' +
+            '</div>' +
+            '<p style="margin-top: var(--space-sm); font-size: var(--fs-sm); color: var(--color-text); line-height:1.5;">' +
+              getExcerpt(post) +
+            '</p>' +
+          '</div>' +
+          '<span class="blog-post-toggle" aria-hidden="true">&#9660;</span>' +
+        '</div>';
+
+      var bodyHTML =
+        '<div class="blog-post-body">' +
+          '<div class="blog-post-content">' +
+            (post.content || '<p><em>No content available.</em></p>') +
+          '</div>' +
+        '</div>';
+
+      article.innerHTML = headerHTML + bodyHTML;
+
+      // Toggle expand/collapse on header click
+      var header = article.querySelector('.blog-post-header');
+      header.addEventListener('click', function () {
+        var isExpanded = article.classList.toggle('expanded');
+        header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      });
+
+      // Also handle keyboard Enter/Space for accessibility
+      header.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          header.click();
+        }
+      });
+
+      return article;
+    }
+
+    /**
+     * Render all blog posts into the #blog-posts container.
+     * Posts are sorted newest first.
+     */
+    function renderBlogPosts() {
+      var container = document.getElementById('blog-posts');
+      if (!container || !window.ContentStore) return;
+
+      var posts = ContentStore.getLatest('post', 999);
+
+      if (posts.length === 0) {
+        container.innerHTML =
+          '<div class="empty-state">' +
+            '<div class="empty-icon">📝</div>' +
+            '<p>Няма постове все още / No posts yet!</p>' +
+          '</div>';
+        return;
+      }
+
+      // Clear container and append each post card
+      container.innerHTML = '';
+      for (var i = 0; i < posts.length; i++) {
+        container.appendChild(buildBlogPost(posts[i]));
+      }
+
+      // Re-trigger animation observer for the newly added .animate-in elements
+      if ('IntersectionObserver' in window) {
+        var animElements = container.querySelectorAll('.animate-in');
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              var delay = Array.prototype.indexOf.call(animElements, entry.target) * 100;
+              setTimeout(function () {
+                entry.target.classList.add('visible');
+              }, delay);
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+
+        for (var j = 0; j < animElements.length; j++) {
+          observer.observe(animElements[j]);
+        }
+      } else {
+        // Fallback — make them all visible with staggered delay
+        var els = container.querySelectorAll('.animate-in');
+        for (var k = 0; k < els.length; k++) {
+          (function (el, idx) {
+            setTimeout(function () { el.classList.add('visible'); }, idx * 120 + 200);
+          })(els[k], k);
+        }
+      }
+    }
+
+    // Listen for the contentReady event dispatched by app.js after ContentStore.init()
+    window.addEventListener('contentReady', function () {
+      renderBlogPosts();
+    });
+  })();
+  </script>
+</body>
+</html>

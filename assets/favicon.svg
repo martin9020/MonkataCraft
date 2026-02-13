@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="4" fill="#0a0a1a"/>
+
+  <!-- Pixel-style "M" in neon green -->
+  <!-- Left vertical stroke -->
+  <rect x="4" y="4" width="4" height="24" fill="#00ff88"/>
+  <!-- Left diagonal -->
+  <rect x="8" y="8" width="4" height="4" fill="#00ff88"/>
+  <!-- Center -->
+  <rect x="12" y="12" width="4" height="4" fill="#00ff88"/>
+  <!-- Right diagonal -->
+  <rect x="16" y="8" width="4" height="4" fill="#00ff88"/>
+  <!-- Right vertical stroke -->
+  <rect x="20" y="4" width="4" height="24" fill="#00ff88"/>
+
+  <!-- Subtle inner highlight for pixel depth -->
+  <rect x="5" y="5" width="2" height="2" fill="#33ffaa" opacity="0.5"/>
+  <rect x="21" y="5" width="2" height="2" fill="#33ffaa" opacity="0.5"/>
+
+  <!-- Bottom accent line -->
+  <rect x="4" y="29" width="20" height="1" fill="#00d4ff" opacity="0.6"/>
+</svg>

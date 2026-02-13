@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Gallery</title>
+  <meta name="description" content="MonkaCraft Gallery — Screenshots from Minecraft & Roblox adventures by MonkaS!">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- Main content -->
+  <main id="content" class="container page-gallery">
+
+    <!-- Page Header -->
+    <h1 class="page-title animate-in">&#x1F5BC;&#xFE0F; &#x0413;&#x0430;&#x043B;&#x0435;&#x0440;&#x0438;&#x044F; / Gallery</h1>
+
+    <!-- Filter Buttons — Game Tags -->
+    <div class="filter-group animate-in" id="filter-game">
+      <span style="font-family: var(--font-body); font-weight: 700; color: var(--color-text-dim); font-size: var(--fs-sm); margin-right: var(--space-xs); align-self: center;">&#x1F3AE; &#x0418;&#x0433;&#x0440;&#x0430;:</span>
+      <button class="filter-btn active" data-filter-game="all">All</button>
+      <button class="filter-btn" data-filter-game="Minecraft">&#x26CF;&#xFE0F; Minecraft</button>
+      <button class="filter-btn" data-filter-game="Roblox">&#x1F7E3; Roblox</button>
+    </div>
+
+    <!-- Filter Buttons — Categories -->
+    <div class="filter-group animate-in" id="filter-category">
+      <span style="font-family: var(--font-body); font-weight: 700; color: var(--color-text-dim); font-size: var(--fs-sm); margin-right: var(--space-xs); align-self: center;">&#x1F3F7;&#xFE0F; &#x041A;&#x0430;&#x0442;&#x0435;&#x0433;&#x043E;&#x0440;&#x0438;&#x044F;:</span>
+      <button class="filter-btn active" data-filter-cat="all">All</button>
+      <button class="filter-btn" data-filter-cat="Build">&#x1F3F0; Builds</button>
+      <button class="filter-btn" data-filter-cat="PVP">&#x2694;&#xFE0F; PVP</button>
+      <button class="filter-btn" data-filter-cat="Funny">&#x1F602; Funny</button>
+      <button class="filter-btn" data-filter-cat="Landscape">&#x1F305; Landscape</button>
+      <button class="filter-btn" data-filter-cat="Achievement">&#x1F3C6; Achievement</button>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="gallery-grid" id="gallery-grid">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Lightbox Overlay -->
+    <div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-label="Image lightbox">
+      <button class="lightbox-close" id="lightbox-close" aria-label="Close lightbox">&times;</button>
+      <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous image">&#x25C0;</button>
+      <img class="lightbox-image" id="lightbox-img" src="" alt="">
+      <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next image">&#x25B6;</button>
+      <div class="lightbox-caption" id="lightbox-caption">
+        <span id="lightbox-title"></span>
+        <span id="lightbox-tag" class="tag" style="margin-left: var(--space-sm);"></span>
+        <span id="lightbox-date" style="display: block; font-size: var(--fs-xs); color: var(--color-text-dim); margin-top: var(--space-xs);"></span>
+        <span id="lightbox-counter" style="display: block; font-family: var(--font-stat); font-size: var(--fs-xs); color: var(--color-primary); margin-top: var(--space-xs);"></span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="../js/content.js"></script>
+  <script src="../js/app.js"></script>
+
+  <!-- Page-specific Gallery JS -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ================================================================
+       STATE
+       ================================================================ */
+    var allScreenshots = [];   // Full list from ContentStore
+    var filtered = [];         // Currently visible (after filters)
+    var activeGame = 'all';    // Current game filter
+    var activeCat = 'all';     // Current category filter
+    var lightboxIndex = -1;    // Currently shown image in lightbox (-1 = closed)
+
+    /* ================================================================
+       DOM REFERENCES
+       ================================================================ */
+    var gridEl = document.getElementById('gallery-grid');
+    var lightboxEl = document.getElementById('lightbox');
+    var lightboxImg = document.getElementById('lightbox-img');
+    var lightboxTitle = document.getElementById('lightbox-title');
+    var lightboxTag = document.getElementById('lightbox-tag');
+    var lightboxDate = document.getElementById('lightbox-date');
+    var lightboxCounter = document.getElementById('lightbox-counter');
+    var btnClose = document.getElementById('lightbox-close');
+    var btnPrev = document.getElementById('lightbox-prev');
+    var btnNext = document.getElementById('lightbox-next');
+
+    /* ================================================================
+       HELPERS
+       ================================================================ */
+
+    /**
+     * Return a tag CSS class based on gameTag string.
+     */
+    function tagClass(gameTag) {
+      var g = (gameTag || '').toLowerCase();
+      if (g === 'minecraft') return 'tag tag-minecraft';
+      if (g === 'roblox') return 'tag tag-roblox';
+      return 'tag tag-other';
+    }
+
+    /**
+     * Format ISO date string to a short human-readable form.
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    /* ================================================================
+       FILTERING
+       ================================================================ */
+
+    /**
+     * Apply current activeGame + activeCat filters to allScreenshots,
+     * store result in `filtered`, and re-render the grid.
+     */
+    function applyFilters() {
+      filtered = allScreenshots.filter(function (s) {
+        var gameOk = (activeGame === 'all') ||
+                     (s.gameTag || '').toLowerCase() === activeGame.toLowerCase();
+        var catOk  = (activeCat === 'all') ||
+                     (s.category || '').toLowerCase() === activeCat.toLowerCase();
+        return gameOk && catOk;
+      });
+
+      // Sort newest first
+      filtered.sort(function (a, b) {
+        return new Date(b.date) - new Date(a.date);
+      });
+
+      renderGrid();
+    }
+
+    /* ================================================================
+       RENDER GALLERY GRID
+       ================================================================ */
+
+    function renderGrid() {
+      if (!gridEl) return;
+
+      // Fade out existing items before replacing
+      gridEl.style.opacity = '0';
+      gridEl.style.transition = 'opacity 200ms ease';
+
+      setTimeout(function () {
+        if (filtered.length === 0) {
+          gridEl.innerHTML =
+            '<div class="empty-state">' +
+              '<div class="empty-icon">&#x1F5BC;&#xFE0F;</div>' +
+              '<p>&#x041D;&#x044F;&#x043C;&#x0430; &#x0441;&#x043D;&#x0438;&#x043C;&#x043A;&#x0438; &#x0437;&#x0430; &#x0442;&#x0430;&#x0437;&#x0438; &#x043A;&#x0430;&#x0442;&#x0435;&#x0433;&#x043E;&#x0440;&#x0438;&#x044F;.<br><small>No screenshots match these filters.</small></p>' +
+            '</div>';
+        } else {
+          var html = '';
+          for (var i = 0; i < filtered.length; i++) {
+            var s = filtered[i];
+            var imgSrc = s.thumbnail || s.url || '';
+            var title = s.title || 'Screenshot';
+            var game = s.gameTag || '';
+            html +=
+              '<div class="gallery-item animate-in" data-index="' + i + '">' +
+                '<img loading="lazy" src="' + imgSrc + '" alt="' + title.replace(/"/g, '&quot;') + '">' +
+                '<div class="gallery-item-overlay">' +
+                  '<span class="item-title">' + title + '</span>' +
+                  (game ? ' <span class="' + tagClass(game) + '" style="margin-left:4px;vertical-align:middle;">' + game + '</span>' : '') +
+                '</div>' +
+              '</div>';
+          }
+          gridEl.innerHTML = html;
+
+          // Attach click handlers to open lightbox
+          var items = gridEl.querySelectorAll('.gallery-item');
+          for (var j = 0; j < items.length; j++) {
+            (function (idx) {
+              items[idx].addEventListener('click', function () {
+                openLightbox(idx);
+              });
+            })(j);
+          }
+
+          // Re-trigger fade-in animations for new items
+          requestAnimationFrame(function () {
+            var animItems = gridEl.querySelectorAll('.animate-in');
+            for (var k = 0; k < animItems.length; k++) {
+              (function (el, delay) {
+                setTimeout(function () {
+                  el.classList.add('visible');
+                }, delay);
+              })(animItems[k], k * 60);
+            }
+          });
+        }
+
+        // Fade grid back in
+        gridEl.style.opacity = '1';
+      }, 200);
+    }
+
+    /* ================================================================
+       LIGHTBOX
+       ================================================================ */
+
+    function openLightbox(index) {
+      if (!filtered || filtered.length === 0) return;
+      if (index < 0 || index >= filtered.length) return;
+
+      lightboxIndex = index;
+      var s = filtered[index];
+
+      lightboxImg.src = s.url || s.thumbnail || '';
+      lightboxImg.alt = s.title || 'Screenshot';
+      lightboxTitle.textContent = s.title || '';
+
+      // Tag badge
+      var game = s.gameTag || '';
+      lightboxTag.className = tagClass(game);
+      lightboxTag.textContent = game;
+      lightboxTag.style.display = game ? 'inline-block' : 'none';
+
+      // Date
+      lightboxDate.textContent = formatDate(s.date);
+
+      // Counter
+      lightboxCounter.textContent = (index + 1) + ' / ' + filtered.length;
+
+      // Show overlay
+      lightboxEl.classList.add('active');
+
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+
+      // Focus close button for accessibility
+      btnClose.focus();
+    }
+
+    function closeLightbox() {
+      lightboxEl.classList.remove('active');
+      lightboxIndex = -1;
+      document.body.style.overflow = '';
+    }
+
+    function nextImage() {
+      if (filtered.length === 0) return;
+      var next = (lightboxIndex + 1) % filtered.length;
+      openLightbox(next);
+    }
+
+    function prevImage() {
+      if (filtered.length === 0) return;
+      var prev = (lightboxIndex - 1 + filtered.length) % filtered.length;
+      openLightbox(prev);
+    }
+
+    /* ================================================================
+       EVENT LISTENERS — LIGHTBOX
+       ================================================================ */
+
+    // Close button
+    btnClose.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeLightbox();
+    });
+
+    // Prev / Next buttons
+    btnPrev.addEventListener('click', function (e) {
+      e.stopPropagation();
+      prevImage();
+    });
+
+    btnNext.addEventListener('click', function (e) {
+      e.stopPropagation();
+      nextImage();
+    });
+
+    // Click backdrop (outside image) to close
+    lightboxEl.addEventListener('click', function (e) {
+      // Only close if clicking the overlay itself, not children (except image wrapper area)
+      if (e.target === lightboxEl) {
+        closeLightbox();
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function (e) {
+      if (lightboxIndex < 0) return; // Lightbox not open
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        closeLightbox();
+      } else if (e.key === 'ArrowRight') {
+        nextImage();
+      } else if (e.key === 'ArrowLeft') {
+        prevImage();
+      }
+    });
+
+    // Touch/swipe support for mobile
+    var touchStartX = 0;
+    var touchEndX = 0;
+
+    lightboxEl.addEventListener('touchstart', function (e) {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    lightboxEl.addEventListener('touchend', function (e) {
+      touchEndX = e.changedTouches[0].screenX;
+      var diff = touchStartX - touchEndX;
+      var threshold = 50;
+
+      if (Math.abs(diff) >= threshold) {
+        if (diff > 0) {
+          // Swiped left — go next
+          nextImage();
+        } else {
+          // Swiped right — go prev
+          prevImage();
+        }
+      }
+    }, { passive: true });
+
+    /* ================================================================
+       EVENT LISTENERS — FILTER BUTTONS
+       ================================================================ */
+
+    // Game filter buttons
+    var gameFilterBtns = document.querySelectorAll('#filter-game .filter-btn');
+    for (var g = 0; g < gameFilterBtns.length; g++) {
+      gameFilterBtns[g].addEventListener('click', function () {
+        // Update active state
+        for (var x = 0; x < gameFilterBtns.length; x++) {
+          gameFilterBtns[x].classList.remove('active');
+        }
+        this.classList.add('active');
+
+        activeGame = this.getAttribute('data-filter-game');
+        applyFilters();
+      });
+    }
+
+    // Category filter buttons
+    var catFilterBtns = document.querySelectorAll('#filter-category .filter-btn');
+    for (var c = 0; c < catFilterBtns.length; c++) {
+      catFilterBtns[c].addEventListener('click', function () {
+        // Update active state
+        for (var y = 0; y < catFilterBtns.length; y++) {
+          catFilterBtns[y].classList.remove('active');
+        }
+        this.classList.add('active');
+
+        activeCat = this.getAttribute('data-filter-cat');
+        applyFilters();
+      });
+    }
+
+    /* ================================================================
+       INIT — Wait for contentReady event from app.js
+       ================================================================ */
+
+    window.addEventListener('contentReady', function () {
+      // Load all screenshots from ContentStore
+      if (window.ContentStore && typeof window.ContentStore.getAll === 'function') {
+        allScreenshots = window.ContentStore.getAll('screenshot') || [];
+      }
+
+      // Apply default filters (show all) and render
+      applyFilters();
+    });
+
+  })();
+  </script>
+
+</body>
+</html>

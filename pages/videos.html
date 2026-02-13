@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Videos</title>
+  <meta name="description" content="MonkaCraft Videos — Minecraft & Roblox gameplay, tutorials, and funny moments by MonkaS!">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- Main content -->
+  <main id="content" class="container page-videos">
+
+    <!-- 1. Page Header -->
+    <h1 class="page-title animate-in">&#128249; &#1042;&#1080;&#1076;&#1077;&#1072; / Videos</h1>
+
+    <!-- 2. Controls Bar -->
+    <div class="controls-bar animate-in">
+      <div class="filter-group">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="Minecraft">&#9935;&#65039; Minecraft</button>
+        <button class="filter-btn" data-filter="Roblox">&#127922; Roblox</button>
+        <button class="filter-btn" data-filter="Tutorial">&#128218; Tutorials</button>
+        <button class="filter-btn" data-filter="Funny Moments">&#128514; Funny Moments</button>
+      </div>
+      <button class="sort-toggle" id="sort-toggle" title="Toggle sort order">
+        <span id="sort-label">&#1053;&#1072;&#1081;-&#1085;&#1086;&#1074;&#1080; / Newest &#8595;</span>
+      </button>
+    </div>
+
+    <!-- 3. Video Grid -->
+    <div class="grid grid-3" id="videos-grid"></div>
+
+  </main>
+
+  <!-- 4. Video Modal -->
+  <div class="modal-overlay video-modal" id="video-modal">
+    <div class="modal-content">
+      <button class="modal-close" id="modal-close-btn" aria-label="Close video">&times;</button>
+      <div class="video-wrapper" id="modal-video-wrapper">
+        <!-- JS inserts iframe or video element here -->
+      </div>
+      <div class="video-info">
+        <h3 class="modal-title" id="modal-video-title"></h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="../js/content.js"></script>
+  <script src="../js/app.js"></script>
+
+  <!-- Page-specific JS for Videos -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* -------------------------------------------------------
+       State
+       ------------------------------------------------------- */
+    var currentFilter = 'all';
+    var sortNewest = true; // true = newest first, false = oldest first
+
+    /* -------------------------------------------------------
+       Helper: Extract YouTube video ID from various URL formats
+       Handles:
+         - https://www.youtube.com/watch?v=XXXX
+         - https://youtu.be/XXXX
+         - https://www.youtube.com/embed/XXXX
+         - https://youtube.com/watch?v=XXXX&feature=...
+       ------------------------------------------------------- */
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      var match;
+      // youtu.be/XXXX
+      match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      // youtube.com/embed/XXXX
+      match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      // youtube.com/watch?v=XXXX
+      match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (match) return match[1];
+      return null;
+    }
+
+    /* -------------------------------------------------------
+       Helper: Check if a URL is a YouTube URL
+       ------------------------------------------------------- */
+    function isYouTubeUrl(url) {
+      if (!url) return false;
+      return url.indexOf('youtube.com') !== -1 || url.indexOf('youtu.be') !== -1;
+    }
+
+    /* -------------------------------------------------------
+       Helper: Format date string to readable format
+       ------------------------------------------------------- */
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      var options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return d.toLocaleDateString('bg-BG', options);
+    }
+
+    /* -------------------------------------------------------
+       Helper: Get game tag CSS class
+       ------------------------------------------------------- */
+    function getTagClass(gameTag) {
+      if (!gameTag) return 'tag-other';
+      switch (gameTag.toLowerCase()) {
+        case 'minecraft': return 'tag-minecraft';
+        case 'roblox': return 'tag-roblox';
+        default: return 'tag-other';
+      }
+    }
+
+    /* -------------------------------------------------------
+       Helper: Get category tag CSS class
+       ------------------------------------------------------- */
+    function getCategoryClass(category) {
+      if (!category) return 'tag-other';
+      switch (category.toLowerCase()) {
+        case 'tutorial': return 'tag-tutorial';
+        case 'funny moments': return 'tag-funny';
+        case 'pvp': return 'tag-pvp';
+        default: return 'tag-other';
+      }
+    }
+
+    /* -------------------------------------------------------
+       Get filtered and sorted videos
+       ------------------------------------------------------- */
+    function getFilteredVideos() {
+      var videos;
+
+      if (currentFilter === 'all') {
+        videos = ContentStore.getAll('video');
+      } else if (currentFilter === 'Tutorial' || currentFilter === 'Funny Moments') {
+        // Filter by category
+        videos = ContentStore.getByCategory('video', currentFilter);
+      } else {
+        // Filter by gameTag (Minecraft, Roblox)
+        videos = ContentStore.getByTag('video', currentFilter);
+      }
+
+      // Sort
+      videos.sort(function (a, b) {
+        var dateA = new Date(a.date);
+        var dateB = new Date(b.date);
+        return sortNewest ? (dateB - dateA) : (dateA - dateB);
+      });
+
+      return videos;
+    }
+
+    /* -------------------------------------------------------
+       Render video cards in the grid
+       ------------------------------------------------------- */
+    function renderVideoCards() {
+      var grid = document.getElementById('videos-grid');
+      if (!grid) return;
+
+      var videos = getFilteredVideos();
+
+      if (videos.length === 0) {
+        grid.innerHTML =
+          '<div class="empty-state" style="grid-column: 1 / -1;">' +
+            '<div class="empty-icon">\uD83D\uDCF9</div>' +
+            '<p>\u041D\u044F\u043C\u0430 \u043D\u0430\u043C\u0435\u0440\u0435\u043D\u0438 \u0432\u0438\u0434\u0435\u0430 / No videos found</p>' +
+          '</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < videos.length; i++) {
+        var video = videos[i];
+        var videoId = extractYouTubeId(video.url);
+        var thumbUrl = video.thumbnail || '';
+
+        // Auto-generate YouTube thumbnail if not provided
+        if (!thumbUrl && videoId) {
+          thumbUrl = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+        }
+
+        // For Cloudinary videos with no thumbnail, use a placeholder
+        if (!thumbUrl && !videoId && video.url) {
+          thumbUrl = '';
+        }
+
+        var tagClass = getTagClass(video.gameTag);
+        var catClass = getCategoryClass(video.category);
+
+        // Truncate description for card snippet
+        var descSnippet = '';
+        if (video.description) {
+          descSnippet = video.description.length > 100
+            ? video.description.substring(0, 100) + '...'
+            : video.description;
+        }
+
+        html +=
+          '<div class="card card-clickable animate-in" data-video-index="' + i + '" data-video-id="' + (video.id || '') + '">' +
+            (thumbUrl
+              ? '<img class="card-image" src="' + thumbUrl + '" alt="' + (video.title || 'Video') + '" loading="lazy">'
+              : '<div class="card-image" style="background:var(--color-surface);display:flex;align-items:center;justify-content:center;font-size:2rem;">\uD83C\uDFAC</div>'
+            ) +
+            '<h3 class="card-title">' + (video.title || 'Video') + '</h3>' +
+            '<div class="card-meta">' +
+              '<span>' + formatDate(video.date) + '</span>' +
+              ' &middot; ' +
+              '<span class="tag ' + tagClass + '">' + (video.gameTag || 'Other') + '</span>' +
+              (video.category
+                ? ' <span class="tag ' + catClass + '">' + video.category + '</span>'
+                : ''
+              ) +
+            '</div>' +
+            (descSnippet
+              ? '<p class="card-excerpt">' + descSnippet + '</p>'
+              : ''
+            ) +
+          '</div>';
+      }
+
+      grid.innerHTML = html;
+
+      // Re-apply animations to newly added cards
+      var newCards = grid.querySelectorAll('.animate-in');
+      for (var j = 0; j < newCards.length; j++) {
+        (function (el, idx) {
+          setTimeout(function () {
+            el.classList.add('visible');
+          }, idx * 60 + 50);
+        })(newCards[j], j);
+      }
+    }
+
+    /* -------------------------------------------------------
+       Modal: Open video player
+       ------------------------------------------------------- */
+    function openVideoModal(video) {
+      var modal = document.getElementById('video-modal');
+      var wrapper = document.getElementById('modal-video-wrapper');
+      var titleEl = document.getElementById('modal-video-title');
+      if (!modal || !wrapper || !titleEl) return;
+
+      // Set title
+      titleEl.textContent = video.title || 'Video';
+
+      // Determine video type and create player
+      var videoId = extractYouTubeId(video.url);
+
+      if (videoId) {
+        // YouTube embed
+        wrapper.innerHTML =
+          '<iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0" ' +
+          'title="' + (video.title || 'Video') + '" ' +
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+          'allowfullscreen></iframe>';
+      } else if (video.url) {
+        // Cloudinary or direct video URL — use <video> tag
+        wrapper.innerHTML =
+          '<video controls autoplay preload="metadata" style="width:100%;height:100%;background:#000;">' +
+            '<source src="' + video.url + '" type="video/mp4">' +
+            'Your browser does not support the video tag.' +
+          '</video>';
+      } else {
+        wrapper.innerHTML =
+          '<div class="empty-state" style="padding:var(--space-2xl);">' +
+            '<div class="empty-icon">\uD83D\uDCF9</div>' +
+            '<p>\u041D\u044F\u043C\u0430 \u043B\u0438\u043D\u043A \u043A\u044A\u043C \u0432\u0438\u0434\u0435\u043E\u0442\u043E / No video URL available</p>' +
+          '</div>';
+      }
+
+      // Show modal
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    /* -------------------------------------------------------
+       Modal: Close video player and stop playback
+       ------------------------------------------------------- */
+    function closeVideoModal() {
+      var modal = document.getElementById('video-modal');
+      var wrapper = document.getElementById('modal-video-wrapper');
+      if (!modal) return;
+
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+
+      // Stop video playback — clear the wrapper after transition
+      setTimeout(function () {
+        if (wrapper) {
+          // Remove iframe src to stop YouTube playback
+          var iframe = wrapper.querySelector('iframe');
+          if (iframe) {
+            iframe.src = '';
+          }
+          // Pause and remove video element
+          var videoEl = wrapper.querySelector('video');
+          if (videoEl) {
+            videoEl.pause();
+            videoEl.src = '';
+          }
+          wrapper.innerHTML = '';
+        }
+      }, 300);
+    }
+
+    /* -------------------------------------------------------
+       Filter click handlers
+       ------------------------------------------------------- */
+    function initFilters() {
+      var filterGroup = document.querySelector('.filter-group');
+      if (!filterGroup) return;
+
+      filterGroup.addEventListener('click', function (e) {
+        var btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+
+        // Update active state
+        var allBtns = filterGroup.querySelectorAll('.filter-btn');
+        for (var i = 0; i < allBtns.length; i++) {
+          allBtns[i].classList.remove('active');
+        }
+        btn.classList.add('active');
+
+        // Update filter and re-render
+        currentFilter = btn.getAttribute('data-filter');
+        renderVideoCards();
+      });
+    }
+
+    /* -------------------------------------------------------
+       Sort toggle
+       ------------------------------------------------------- */
+    function initSortToggle() {
+      var sortBtn = document.getElementById('sort-toggle');
+      var sortLabel = document.getElementById('sort-label');
+      if (!sortBtn || !sortLabel) return;
+
+      sortBtn.addEventListener('click', function () {
+        sortNewest = !sortNewest;
+
+        if (sortNewest) {
+          sortLabel.innerHTML = '\u041D\u0430\u0439-\u043D\u043E\u0432\u0438 / Newest \u2193';
+        } else {
+          sortLabel.innerHTML = '\u041D\u0430\u0439-\u0441\u0442\u0430\u0440\u0438 / Oldest \u2191';
+        }
+
+        renderVideoCards();
+      });
+    }
+
+    /* -------------------------------------------------------
+       Card click — open modal
+       ------------------------------------------------------- */
+    function initCardClicks() {
+      var grid = document.getElementById('videos-grid');
+      if (!grid) return;
+
+      grid.addEventListener('click', function (e) {
+        var card = e.target.closest('.card-clickable');
+        if (!card) return;
+
+        var videoId = card.getAttribute('data-video-id');
+        if (!videoId) return;
+
+        // Find the video in the current filtered list
+        var videos = getFilteredVideos();
+        var video = null;
+        for (var i = 0; i < videos.length; i++) {
+          if (videos[i].id === videoId) {
+            video = videos[i];
+            break;
+          }
+        }
+
+        if (video) {
+          openVideoModal(video);
+        }
+      });
+    }
+
+    /* -------------------------------------------------------
+       Modal close handlers
+       ------------------------------------------------------- */
+    function initModalClose() {
+      // Close button
+      var closeBtn = document.getElementById('modal-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          closeVideoModal();
+        });
+      }
+
+      // Backdrop click
+      var modal = document.getElementById('video-modal');
+      if (modal) {
+        modal.addEventListener('click', function (e) {
+          // Only close if click is on the overlay itself, not the content
+          if (e.target === modal) {
+            closeVideoModal();
+          }
+        });
+      }
+
+      // Escape key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          var modal = document.getElementById('video-modal');
+          if (modal && modal.classList.contains('active')) {
+            closeVideoModal();
+          }
+        }
+      });
+    }
+
+    /* -------------------------------------------------------
+       Initialize when content is ready
+       ------------------------------------------------------- */
+    window.addEventListener('contentReady', function () {
+      renderVideoCards();
+      initFilters();
+      initSortToggle();
+      initCardClicks();
+      initModalClose();
+    });
+
+  })();
+  </script>
+
+</body>
+</html>

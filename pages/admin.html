@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- ============================================================
+       AUTH SCREEN — Full-screen secret HQ login
+       ============================================================ -->
+  <div id="auth-screen" class="admin-auth">
+    <div class="auth-card">
+      <!-- Decorative pixel corners -->
+      <div style="position:absolute;top:0;left:0;width:12px;height:12px;border-top:3px solid var(--color-primary);border-left:3px solid var(--color-primary);border-radius:2px 0 0 0;"></div>
+      <div style="position:absolute;top:0;right:0;width:12px;height:12px;border-top:3px solid var(--color-secondary);border-right:3px solid var(--color-secondary);border-radius:0 2px 0 0;"></div>
+      <div style="position:absolute;bottom:0;left:0;width:12px;height:12px;border-bottom:3px solid var(--color-secondary);border-left:3px solid var(--color-secondary);border-radius:0 0 0 2px;"></div>
+      <div style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-bottom:3px solid var(--color-primary);border-right:3px solid var(--color-primary);border-radius:0 0 2px 0;"></div>
+
+      <div class="auth-icon">&#x1F512;</div>
+      <h1 class="auth-title">&#x1F510; &#x0422;&#x0430;&#x0439;&#x043D;&#x0430;&#x0442;&#x0430; &#x0431;&#x0430;&#x0437;&#x0430; &#x043D;&#x0430; MonkaS</h1>
+      <p class="auth-subtitle">Secret HQ &mdash; Enter the passphrase</p>
+
+      <div class="auth-input-wrapper" id="auth-input-wrapper">
+        <input
+          type="password"
+          id="auth-passphrase"
+          class="form-input"
+          placeholder="&#x1F511; &#x041F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430; (Passphrase)..."
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Passphrase"
+        >
+        <button type="button" id="auth-toggle-eye" class="auth-toggle-eye" title="Show / Hide">&#x1F441;</button>
+      </div>
+
+      <button type="button" id="auth-enter-btn" class="btn btn-primary btn-lg w-full">
+        &#x1F680; ENTER
+      </button>
+
+      <p id="auth-error" class="auth-error" style="display:none;"></p>
+      <p id="auth-cooldown" class="auth-cooldown" style="display:none;"></p>
+
+      <!-- Decorative pixel elements -->
+      <div style="margin-top:var(--space-xl);opacity:0.3;font-size:var(--fs-xs);color:var(--color-text-dim);font-family:var(--font-heading);">
+        &#x25AA;&#x25AA;&#x25AA; MonkaCraft Admin &#x25AA;&#x25AA;&#x25AA;
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ADMIN DASHBOARD
+       ============================================================ -->
+  <main id="content" class="container page-admin">
+    <div id="admin-dashboard" class="admin-dashboard">
+
+      <!-- ====== TOP BAR ====== -->
+      <div class="admin-topbar">
+        <div class="admin-greeting">&#x1F44B; &#x0417;&#x0434;&#x0440;&#x0430;&#x0432;&#x0435;&#x0439;, MonkaS!</div>
+
+        <div class="admin-stats-row">
+          <div class="admin-stat">&#x1F4F9; <span id="stat-videos" class="count">0</span> Videos</div>
+          <div class="admin-stat">&#x1F5BC;&#xFE0F; <span id="stat-screenshots" class="count">0</span> Screenshots</div>
+          <div class="admin-stat">&#x1F4DD; <span id="stat-posts" class="count">0</span> Posts</div>
+          <div class="admin-stat">&#x1F3AC; <span id="stat-streams" class="count">0</span> Streams</div>
+        </div>
+
+        <button type="button" id="btn-logout" class="admin-logout">
+          &#x1F6AA; &#x0418;&#x0417;&#x041B;&#x0415;&#x0417; / Logout
+        </button>
+      </div>
+
+      <!-- ====== TAB BUTTONS ====== -->
+      <div class="admin-tabs" id="admin-tabs">
+        <button type="button" class="admin-tab-btn active" data-tab="video">
+          <span class="tab-icon">&#x1F4F9;</span>
+          <span class="tab-label-bg">&#x0414;&#x043E;&#x0431;&#x0430;&#x0432;&#x0438; &#x0412;&#x0438;&#x0434;&#x0435;&#x043E;</span>
+          <span class="tab-label-en">Add Video</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="screenshot">
+          <span class="tab-icon">&#x1F5BC;&#xFE0F;</span>
+          <span class="tab-label-bg">&#x0414;&#x043E;&#x0431;&#x0430;&#x0432;&#x0438; &#x0421;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430;</span>
+          <span class="tab-label-en">Add Screenshot</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="blog">
+          <span class="tab-icon">&#x1F4DD;</span>
+          <span class="tab-label-bg">&#x041D;&#x043E;&#x0432; &#x041F;&#x043E;&#x0441;&#x0442;</span>
+          <span class="tab-label-en">New Post</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="stream">
+          <span class="tab-icon">&#x1F3AC;</span>
+          <span class="tab-label-bg">&#x0421;&#x0442;&#x0440;&#x0438;&#x0439;&#x043C;</span>
+          <span class="tab-label-en">Stream</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="chat">
+          <span class="tab-icon">&#x1F4AC;</span>
+          <span class="tab-label-bg">&#x0427;&#x0430;&#x0442; &#x0441; &#x0427;&#x0418;&#x0427;&#x0418;</span>
+          <span class="tab-label-en">Chat with Uncle</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="settings">
+          <span class="tab-icon">&#x2699;&#xFE0F;</span>
+          <span class="tab-label-bg">&#x041D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0439;&#x043A;&#x0438;</span>
+          <span class="tab-label-en">Settings</span>
+        </button>
+      </div>
+
+      <!-- ============================================================
+           TAB PANELS
+           ============================================================ -->
+
+      <!-- ====== TAB 1 — ADD VIDEO ====== -->
+      <div id="tab-video" class="admin-tab-panel active">
+        <h2 class="admin-section-title">&#x1F4F9; &#x0414;&#x043E;&#x0431;&#x0430;&#x0432;&#x0438; &#x0412;&#x0438;&#x0434;&#x0435;&#x043E; / Add Video</h2>
+
+        <form id="form-video" autocomplete="off">
+          <!-- Hidden edit ID -->
+          <input type="hidden" id="video-edit-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="video-title">&#x1F3AC; &#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435; (Title)</label>
+            <input type="text" id="video-title" class="form-input" placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x0437;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435;&#x0442;&#x043E;..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">&#x1F4FC; &#x0422;&#x0438;&#x043F; &#x0432;&#x0438;&#x0434;&#x0435;&#x043E; (Video Type)</label>
+            <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap;">
+              <label class="toggle-wrapper">
+                <input type="radio" name="video-type" value="youtube" checked class="toggle-input" id="video-type-yt">
+                <span style="font-weight:700;color:var(--color-text);">&#x25B6;&#xFE0F; YouTube Link</span>
+              </label>
+              <label class="toggle-wrapper">
+                <input type="radio" name="video-type" value="upload" class="toggle-input" id="video-type-upload">
+                <span style="font-weight:700;color:var(--color-text);">&#x2601;&#xFE0F; Upload Video</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- YouTube URL section -->
+          <div id="video-youtube-section" class="form-group">
+            <label class="form-label" for="video-youtube-url">&#x1F517; YouTube URL</label>
+            <input type="url" id="video-youtube-url" class="form-input" placeholder="https://www.youtube.com/watch?v=...">
+            <div id="video-yt-preview" class="upload-preview" style="display:none;">
+              <div id="video-yt-iframe-wrapper" style="position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--border-radius-sm);overflow:hidden;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Cloudinary upload section (hidden by default) -->
+          <div id="video-upload-section" class="form-group" style="display:none;">
+            <label class="form-label">&#x2601;&#xFE0F; &#x041A;&#x0430;&#x0447;&#x0438; &#x0432;&#x0438;&#x0434;&#x0435;&#x043E; (Upload Video)</label>
+            <button type="button" id="video-upload-btn" class="btn btn-secondary w-full" style="min-height:56px;">
+              &#x1F4E4; &#x041A;&#x0430;&#x0447;&#x0438; &#x0432; Cloudinary / Upload
+            </button>
+            <div id="video-upload-preview" class="upload-preview" style="display:none;">
+              <p id="video-upload-filename" style="color:var(--color-primary);font-weight:700;"></p>
+              <input type="hidden" id="video-upload-url" value="">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="video-gametag">&#x1F3AE; &#x0418;&#x0433;&#x0440;&#x0430; (Game Tag)</label>
+            <select id="video-gametag" class="form-select">
+              <option value="Minecraft">&#x26CF;&#xFE0F; Minecraft</option>
+              <option value="Roblox">&#x1F9F1; Roblox</option>
+              <option value="Other">&#x1F3AE; Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="video-category">&#x1F4C1; &#x041A;&#x0430;&#x0442;&#x0435;&#x0433;&#x043E;&#x0440;&#x0438;&#x044F; (Category)</label>
+            <select id="video-category" class="form-select">
+              <option value="Let's Play">&#x1F3AE; Let's Play</option>
+              <option value="Tutorial">&#x1F4D6; Tutorial</option>
+              <option value="Funny Moments">&#x1F602; Funny Moments</option>
+              <option value="PVP">&#x2694;&#xFE0F; PVP</option>
+              <option value="Building">&#x1F3D7;&#xFE0F; Building</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="video-description">&#x1F4AC; &#x041E;&#x043F;&#x0438;&#x0441;&#x0430;&#x043D;&#x0438;&#x0435; (Description)</label>
+            <textarea id="video-description" class="form-textarea" placeholder="&#x041E;&#x043F;&#x0438;&#x0448;&#x0438; &#x0432;&#x0438;&#x0434;&#x0435;&#x043E;&#x0442;&#x043E;..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="video-date">&#x1F4C5; &#x0414;&#x0430;&#x0442;&#x0430; (Date)</label>
+            <input type="date" id="video-date" class="form-input">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-full">
+            &#x1F4BE; &#x0417;&#x0410;&#x041F;&#x0410;&#x0417;&#x0418; / Save
+          </button>
+        </form>
+      </div>
+
+      <!-- ====== TAB 2 — ADD SCREENSHOT ====== -->
+      <div id="tab-screenshot" class="admin-tab-panel">
+        <h2 class="admin-section-title">&#x1F5BC;&#xFE0F; &#x0414;&#x043E;&#x0431;&#x0430;&#x0432;&#x0438; &#x0421;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430; / Add Screenshot</h2>
+
+        <form id="form-screenshot" autocomplete="off">
+          <input type="hidden" id="screenshot-edit-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="screenshot-title">&#x1F3AC; &#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435; (Title)</label>
+            <input type="text" id="screenshot-title" class="form-input" placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x0437;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435;&#x0442;&#x043E;..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">&#x2601;&#xFE0F; &#x041A;&#x0430;&#x0447;&#x0438; &#x0441;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430; (Upload Screenshot)</label>
+            <button type="button" id="screenshot-upload-btn" class="btn btn-secondary w-full" style="min-height:56px;">
+              &#x1F4F7; &#x041A;&#x0430;&#x0447;&#x0438; &#x0432; Cloudinary / Upload Image
+            </button>
+            <div id="screenshot-upload-preview" class="upload-preview" style="display:none;">
+              <img id="screenshot-preview-img" src="" alt="Preview" style="max-height:200px;margin:0 auto;">
+              <input type="hidden" id="screenshot-upload-url" value="">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="screenshot-gametag">&#x1F3AE; &#x0418;&#x0433;&#x0440;&#x0430; (Game Tag)</label>
+            <select id="screenshot-gametag" class="form-select">
+              <option value="Minecraft">&#x26CF;&#xFE0F; Minecraft</option>
+              <option value="Roblox">&#x1F9F1; Roblox</option>
+              <option value="Other">&#x1F3AE; Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="screenshot-category">&#x1F4C1; &#x041A;&#x0430;&#x0442;&#x0435;&#x0433;&#x043E;&#x0440;&#x0438;&#x044F; (Category)</label>
+            <select id="screenshot-category" class="form-select">
+              <option value="Build">&#x1F3D7;&#xFE0F; Build</option>
+              <option value="PVP">&#x2694;&#xFE0F; PVP</option>
+              <option value="Funny">&#x1F602; Funny</option>
+              <option value="Landscape">&#x1F304; Landscape</option>
+              <option value="Achievement">&#x1F3C6; Achievement</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="screenshot-caption">&#x1F4AC; &#x041E;&#x043F;&#x0438;&#x0441;&#x0430;&#x043D;&#x0438;&#x0435; (Caption)</label>
+            <textarea id="screenshot-caption" class="form-textarea" placeholder="&#x041E;&#x043F;&#x0438;&#x0448;&#x0438; &#x0441;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430;&#x0442;&#x0430;..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="screenshot-date">&#x1F4C5; &#x0414;&#x0430;&#x0442;&#x0430; (Date)</label>
+            <input type="date" id="screenshot-date" class="form-input">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-full">
+            &#x1F4BE; &#x0417;&#x0410;&#x041F;&#x0410;&#x0417;&#x0418; / Save
+          </button>
+        </form>
+      </div>
+
+      <!-- ====== TAB 3 — NEW BLOG POST ====== -->
+      <div id="tab-post" class="admin-tab-panel">
+        <h2 class="admin-section-title">&#x1F4DD; &#x041D;&#x043E;&#x0432; &#x041F;&#x043E;&#x0441;&#x0442; / New Blog Post</h2>
+
+        <form id="form-post" autocomplete="off">
+          <input type="hidden" id="post-edit-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="post-title">&#x1F3AC; &#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435; (Title)</label>
+            <input type="text" id="post-title" class="form-input" placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x0437;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435;&#x0442;&#x043E;..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">&#x270F;&#xFE0F; &#x0421;&#x044A;&#x0434;&#x044A;&#x0440;&#x0436;&#x0430;&#x043D;&#x0438;&#x0435; (Content)</label>
+            <div class="wysiwyg-toolbar">
+              <button type="button" class="wysiwyg-btn" id="wysiwyg-bold" title="Bold (&#x0414;&#x0435;&#x0431;&#x0435;&#x043B;)"><b>B</b></button>
+              <button type="button" class="wysiwyg-btn" id="wysiwyg-heading" title="Heading (&#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435;)">H</button>
+              <button type="button" class="wysiwyg-btn" id="wysiwyg-link" title="Link (&#x0412;&#x0440;&#x044A;&#x0437;&#x043A;&#x0430;)">&#x1F517;</button>
+              <button type="button" class="wysiwyg-btn" id="wysiwyg-image" title="Image (&#x0421;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430;)">&#x1F5BC;&#xFE0F;</button>
+            </div>
+            <div id="post-editor" class="wysiwyg-editor" contenteditable="true" data-placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x043F;&#x043E;&#x0441;&#x0442;&#x0430; &#x0442;&#x0443;&#x043A;..."></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="post-gametag">&#x1F3AE; &#x0418;&#x0433;&#x0440;&#x0430; (Game Tag)</label>
+            <select id="post-gametag" class="form-select">
+              <option value="Minecraft">&#x26CF;&#xFE0F; Minecraft</option>
+              <option value="Roblox">&#x1F9F1; Roblox</option>
+              <option value="Other">&#x1F3AE; Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="post-excerpt">&#x1F4CB; &#x041A;&#x0440;&#x0430;&#x0442;&#x043A;&#x043E; &#x043E;&#x043F;&#x0438;&#x0441;&#x0430;&#x043D;&#x0438;&#x0435; (Excerpt) <small>&mdash; &#x0430;&#x0432;&#x0442;&#x043E;&#x043C;&#x0430;&#x0442;&#x0438;&#x0447;&#x043D;&#x043E; / auto-generated</small></label>
+            <input type="text" id="post-excerpt" class="form-input" placeholder="&#x041F;&#x044A;&#x0440;&#x0432;&#x0438;&#x0442;&#x0435; 150 &#x0441;&#x0438;&#x043C;&#x0432;&#x043E;&#x043B;&#x0430; &#x043E;&#x0442; &#x043F;&#x043E;&#x0441;&#x0442;&#x0430;...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="post-date">&#x1F4C5; &#x0414;&#x0430;&#x0442;&#x0430; (Date)</label>
+            <input type="date" id="post-date" class="form-input">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-full">
+            &#x1F4BE; &#x0417;&#x0410;&#x041F;&#x0410;&#x0417;&#x0418; / Save
+          </button>
+        </form>
+      </div>
+
+      <!-- ====== TAB 4 — STREAM ====== -->
+      <div id="tab-stream" class="admin-tab-panel">
+        <h2 class="admin-section-title">&#x1F3AC; &#x0421;&#x0442;&#x0440;&#x0438;&#x0439;&#x043C; / Stream</h2>
+
+        <form id="form-stream" autocomplete="off">
+          <input type="hidden" id="stream-edit-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="stream-title">&#x1F3AC; &#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435; (Stream Title)</label>
+            <input type="text" id="stream-title" class="form-input" placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x0437;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435;&#x0442;&#x043E;..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="stream-url">&#x1F517; Stream URL (YouTube Live / Twitch)</label>
+            <input type="url" id="stream-url" class="form-input" placeholder="https://www.youtube.com/watch?v=... &#x0438;&#x043B;&#x0438; Twitch URL">
+          </div>
+
+          <div class="form-group">
+            <label class="toggle-wrapper">
+              <input type="checkbox" id="stream-is-live" class="toggle-input">
+              <span class="toggle"></span>
+              <span style="font-weight:700;font-size:var(--fs-md);color:var(--color-text);">
+                &#x1F534; &#x041D;&#x0430; &#x0436;&#x0438;&#x0432;&#x043E; &#x0441;&#x0435;&#x0433;&#x0430; (Is Live Now)
+              </span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="stream-gametag">&#x1F3AE; &#x0418;&#x0433;&#x0440;&#x0430; (Game Tag)</label>
+            <select id="stream-gametag" class="form-select">
+              <option value="Minecraft">&#x26CF;&#xFE0F; Minecraft</option>
+              <option value="Roblox">&#x1F9F1; Roblox</option>
+              <option value="Other">&#x1F3AE; Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="stream-date">&#x1F4C5; &#x0414;&#x0430;&#x0442;&#x0430; (Date)</label>
+            <input type="date" id="stream-date" class="form-input">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-full">
+            &#x1F4BE; &#x0417;&#x0410;&#x041F;&#x0410;&#x0417;&#x0418; / Save
+          </button>
+        </form>
+      </div>
+
+      <!-- ====== TAB 5 — CHAT WITH UNCLE ====== -->
+      <div id="tab-chat" class="admin-tab-panel">
+        <h2 class="admin-section-title">&#x1F4AC; &#x0427;&#x0410;&#x0422; &#x0421; &#x0427;&#x0418;&#x0427;&#x0418; / Chat with Uncle</h2>
+
+        <div class="chat-form" id="chat-container">
+          <p id="chat-remaining" class="chat-remaining"></p>
+
+          <div class="form-group">
+            <label class="form-label" for="chat-subject">&#x1F4CB; &#x0422;&#x0435;&#x043C;&#x0430; (Subject)</label>
+            <input type="text" id="chat-subject" class="form-input" placeholder="&#x041A;&#x0430;&#x043A;&#x0432;&#x043E; &#x0438;&#x0441;&#x043A;&#x0430;&#x0448; &#x0434;&#x0430; &#x043A;&#x0430;&#x0436;&#x0435;&#x0448; &#x043D;&#x0430; &#x0427;&#x0438;&#x0447;&#x0438;?">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="chat-message">&#x270F;&#xFE0F; &#x0421;&#x044A;&#x043E;&#x0431;&#x0449;&#x0435;&#x043D;&#x0438;&#x0435; (Message)</label>
+            <textarea id="chat-message" class="form-textarea" style="min-height:150px;" placeholder="&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; &#x0442;&#x0443;&#x043A;..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">&#x1F4F8; &#x041F;&#x0440;&#x0438;&#x043A;&#x0430;&#x0447;&#x0438; &#x0441;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430; (Attach Image &mdash; optional)</label>
+            <button type="button" id="chat-upload-btn" class="btn btn-secondary" style="min-height:48px;">
+              &#x1F4F7; &#x041A;&#x0430;&#x0447;&#x0438; &#x0441;&#x043D;&#x0438;&#x043C;&#x043A;&#x0430; / Upload Image
+            </button>
+            <div id="chat-upload-preview" class="upload-preview" style="display:none;">
+              <img id="chat-preview-img" src="" alt="Attached" style="max-height:120px;margin:0 auto;">
+              <input type="hidden" id="chat-upload-url" value="">
+            </div>
+          </div>
+
+          <button type="button" id="chat-send-btn" class="btn btn-warning btn-lg w-full" style="font-size:var(--fs-lg);">
+            &#x1F4E8; &#x0418;&#x0417;&#x041F;&#x0420;&#x0410;&#x0422;&#x0418; / Send to &#x0427;&#x0418;&#x0427;&#x0418;! &#x1F680;
+          </button>
+
+          <div id="chat-status" style="margin-top:var(--space-md);text-align:center;display:none;"></div>
+
+          <!-- Chat History -->
+          <div style="margin-top:var(--space-2xl);">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-xs);margin-bottom:var(--space-md);color:var(--color-text-dim);">
+              &#x1F4EC; &#x0418;&#x0437;&#x043F;&#x0440;&#x0430;&#x0442;&#x0435;&#x043D;&#x0438; &#x0441;&#x044A;&#x043E;&#x0431;&#x0449;&#x0435;&#x043D;&#x0438;&#x044F; (History)
+            </h3>
+            <div id="chat-history" class="chat-history"></div>
+            <button type="button" id="chat-clear-history" class="btn btn-ghost btn-sm" style="margin-top:var(--space-sm);display:none;">
+              &#x1F5D1;&#xFE0F; &#x0418;&#x0437;&#x0447;&#x0438;&#x0441;&#x0442;&#x0438; &#x0438;&#x0441;&#x0442;&#x043E;&#x0440;&#x0438;&#x044F;&#x0442;&#x0430; / Clear History
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== TAB 6 — SETTINGS ====== -->
+      <div id="tab-settings" class="admin-tab-panel">
+        <h2 class="admin-section-title">&#x2699;&#xFE0F; &#x041D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0439;&#x043A;&#x0438; / Settings</h2>
+
+        <!-- Section 1: Change Passphrase -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">&#x1F511; &#x0421;&#x043C;&#x044F;&#x043D;&#x0430; &#x043D;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430; (Change Passphrase)</h3>
+          <div class="form-group">
+            <label class="form-label" for="settings-current-pass">&#x1F510; &#x0422;&#x0435;&#x043A;&#x0443;&#x0449;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430; (Current Passphrase)</label>
+            <input type="password" id="settings-current-pass" class="form-input" placeholder="&#x0422;&#x0435;&#x043A;&#x0443;&#x0449;&#x0430;&#x0442;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430;...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-new-pass">&#x1F195; &#x041D;&#x043E;&#x0432;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430; (New Passphrase)</label>
+            <input type="password" id="settings-new-pass" class="form-input" placeholder="&#x041D;&#x043E;&#x0432;&#x0430;&#x0442;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430;...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-confirm-pass">&#x1F504; &#x041F;&#x043E;&#x0442;&#x0432;&#x044A;&#x0440;&#x0434;&#x0438; (Confirm New Passphrase)</label>
+            <input type="password" id="settings-confirm-pass" class="form-input" placeholder="&#x041F;&#x043E;&#x0432;&#x0442;&#x043E;&#x0440;&#x0438; &#x043D;&#x043E;&#x0432;&#x0430;&#x0442;&#x0430; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430;...">
+          </div>
+          <p id="settings-pass-error" class="form-error-text" style="display:none;"></p>
+          <button type="button" id="settings-save-pass" class="btn btn-primary">
+            &#x1F4BE; &#x0417;&#x0430;&#x043F;&#x0430;&#x0437;&#x0438; &#x043F;&#x0430;&#x0440;&#x043E;&#x043B;&#x0430;&#x0442;&#x0430; / Save Passphrase
+          </button>
+        </div>
+
+        <!-- Section 2: Cloudinary Settings -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">&#x2601;&#xFE0F; Cloudinary &#x043D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0439;&#x043A;&#x0438;</h3>
+          <div class="form-group">
+            <label class="form-label" for="settings-cloud-name">Cloud Name</label>
+            <input type="text" id="settings-cloud-name" class="form-input" placeholder="your-cloud-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-upload-preset">Upload Preset</label>
+            <input type="text" id="settings-upload-preset" class="form-input" placeholder="your-upload-preset">
+          </div>
+          <div style="display:flex;gap:var(--space-md);align-items:center;flex-wrap:wrap;">
+            <button type="button" id="settings-save-cloudinary" class="btn btn-primary">
+              &#x1F4BE; &#x0417;&#x0430;&#x043F;&#x0430;&#x0437;&#x0438; / Save
+            </button>
+            <button type="button" id="settings-test-cloudinary" class="btn btn-secondary">
+              &#x1F9EA; &#x0422;&#x0435;&#x0441;&#x0442; / Test
+            </button>
+            <span id="settings-cloudinary-status" style="font-family:var(--font-stat);font-size:var(--fs-sm);">
+              &#x1F534; &#x041D;&#x0435; &#x0435; &#x043D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0435;&#x043D;
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 3: EmailJS Settings -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">&#x1F4E7; EmailJS &#x043D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0439;&#x043A;&#x0438; (for Chat with &#x0427;&#x0418;&#x0427;&#x0418;)</h3>
+          <div class="form-group">
+            <label class="form-label" for="settings-emailjs-service">Service ID</label>
+            <input type="text" id="settings-emailjs-service" class="form-input" placeholder="service_xxxxxxx">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-emailjs-template">Template ID</label>
+            <input type="text" id="settings-emailjs-template" class="form-input" placeholder="template_xxxxxxx">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-emailjs-key">Public Key</label>
+            <input type="text" id="settings-emailjs-key" class="form-input" placeholder="your-public-key">
+          </div>
+          <div style="display:flex;gap:var(--space-md);align-items:center;flex-wrap:wrap;">
+            <button type="button" id="settings-save-emailjs" class="btn btn-primary">
+              &#x1F4BE; &#x0417;&#x0430;&#x043F;&#x0430;&#x0437;&#x0438; / Save
+            </button>
+            <button type="button" id="settings-test-emailjs" class="btn btn-secondary">
+              &#x1F9EA; &#x0422;&#x0435;&#x0441;&#x0442; / Test
+            </button>
+            <span id="settings-emailjs-status" style="font-family:var(--font-stat);font-size:var(--fs-sm);">
+              &#x1F534; &#x041D;&#x0435; &#x0435; &#x043D;&#x0430;&#x0441;&#x0442;&#x0440;&#x043E;&#x0435;&#x043D;
+            </span>
+          </div>
+        </div>
+
+        <!-- Section 4: Backup & Restore -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">&#x1F4BE; Backup &amp; Restore</h3>
+          <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-md);">
+            <button type="button" id="settings-export" class="btn btn-primary">
+              &#x1F4E5; &#x0415;&#x043A;&#x0441;&#x043F;&#x043E;&#x0440;&#x0442; (Download Backup)
+            </button>
+            <label class="btn btn-secondary" style="cursor:pointer;">
+              &#x1F4E4; &#x0418;&#x043C;&#x043F;&#x043E;&#x0440;&#x0442; (Restore Backup)
+              <input type="file" id="settings-import" accept=".json" style="display:none;">
+            </label>
+          </div>
+          <p style="font-size:var(--fs-sm);color:var(--color-warning);">
+            &#x26A0;&#xFE0F; &#x0418;&#x043C;&#x043F;&#x043E;&#x0440;&#x0442;&#x044A;&#x0442; &#x0449;&#x0435; &#x0437;&#x0430;&#x043C;&#x0435;&#x043D;&#x0438; &#x0432;&#x0441;&#x0438;&#x0447;&#x043A;&#x043E;! / Import will replace everything!
+          </p>
+        </div>
+
+        <!-- Section 5: Nuclear Delete -->
+        <div class="settings-section" style="border-color:rgba(var(--color-danger-rgb),0.2);">
+          <h3 class="settings-section-title" style="color:var(--color-danger);">&#x1F5D1;&#xFE0F; &#x0418;&#x0437;&#x0447;&#x0438;&#x0441;&#x0442;&#x0438; &#x0432;&#x0441;&#x0438;&#x0447;&#x043A;&#x043E; (Nuclear Delete)</h3>
+          <p style="font-size:var(--fs-sm);color:var(--color-text-dim);margin-bottom:var(--space-md);">
+            &#x0422;&#x043E;&#x0432;&#x0430; &#x0449;&#x0435; &#x0438;&#x0437;&#x0442;&#x0440;&#x0438;&#x0435; &#x0432;&#x0441;&#x0438;&#x0447;&#x043A;&#x043E; &#x0441;&#x044A;&#x0434;&#x044A;&#x0440;&#x0436;&#x0430;&#x043D;&#x0438;&#x0435; &#x0438; &#x0449;&#x0435; &#x0432;&#x044A;&#x0440;&#x043D;&#x0435; &#x043D;&#x0430;&#x0447;&#x0430;&#x043B;&#x043D;&#x0438;&#x0442;&#x0435; &#x0434;&#x0430;&#x043D;&#x043D;&#x0438;. / This will delete everything and reload defaults.
+          </p>
+          <button type="button" id="settings-nuclear" class="btn btn-nuclear">
+            &#x2622;&#xFE0F; &#x0418;&#x0417;&#x0422;&#x0420;&#x0418;&#x0419; &#x0412;&#x0421;&#x0418;&#x0427;&#x041A;&#x041E; / Delete EVERYTHING
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           CONTENT LIST — always visible below tabs
+           ============================================================ -->
+      <div id="content-list" class="content-list">
+        <div class="content-list-header">
+          <h2 class="admin-section-title" style="margin-bottom:0;">&#x1F4CB; &#x0421;&#x044A;&#x0434;&#x044A;&#x0440;&#x0436;&#x0430;&#x043D;&#x0438;&#x0435; / Content List</h2>
+          <div class="search-wrapper" style="min-width:220px;max-width:360px;flex:1;">
+            <input type="text" id="content-search" class="form-input" placeholder="&#x0422;&#x044A;&#x0440;&#x0441;&#x0438;... / Search...">
+          </div>
+        </div>
+
+        <!-- Desktop table view -->
+        <div class="content-list-table-wrapper">
+          <table class="content-list-table">
+            <thead>
+              <tr>
+                <th>&#x1F4CC;</th>
+                <th>&#x0417;&#x0430;&#x0433;&#x043B;&#x0430;&#x0432;&#x0438;&#x0435; (Title)</th>
+                <th>&#x1F3AE; Tag</th>
+                <th>&#x1F4C5; &#x0414;&#x0430;&#x0442;&#x0430;</th>
+                <th>&#x1F527; &#x0414;&#x0435;&#x0439;&#x0441;&#x0442;&#x0432;&#x0438;&#x044F;</th>
+              </tr>
+            </thead>
+            <tbody id="content-list-tbody">
+              <!-- Populated by admin.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile card view -->
+        <div class="content-list-card" id="content-list-cards">
+          <!-- Populated by admin.js -->
+        </div>
+      </div>
+
+    </div><!-- /admin-dashboard -->
+  </main>
+
+  <!-- ============================================================
+       MODALS
+       ============================================================ -->
+
+  <!-- Delete Confirmation Modal -->
+  <div id="modal-confirm" class="modal-overlay confirm-modal">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="modal-confirm-close">&times;</button>
+      <div class="confirm-icon" id="modal-confirm-icon">&#x26A0;&#xFE0F;</div>
+      <h3 class="modal-title" id="modal-confirm-title">&#x0421;&#x0438;&#x0433;&#x0443;&#x0440;&#x0435;&#x043D; &#x043B;&#x0438; &#x0441;&#x0438;?</h3>
+      <p class="confirm-text" id="modal-confirm-text"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="modal-confirm-cancel">
+          &#x274C; &#x041E;&#x0442;&#x043A;&#x0430;&#x0436;&#x0438; / Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="modal-confirm-ok">
+          &#x2705; &#x0414;&#x0430; / Yes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nuclear Delete — Step 2 Modal -->
+  <div id="modal-nuclear-2" class="modal-overlay confirm-modal">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="modal-nuclear-2-close">&times;</button>
+      <div class="confirm-icon">&#x1F6A8;</div>
+      <h3 class="modal-title">&#x041D;&#x0410;&#x0418;&#x0421;&#x0422;&#x0418;&#x041D;&#x0410; &#x0441;&#x0438;&#x0433;&#x0443;&#x0440;&#x0435;&#x043D;? / REALLY sure?</h3>
+      <p class="confirm-text">&#x0422;&#x043E;&#x0432;&#x0430; &#x0449;&#x0435; &#x0438;&#x0437;&#x0442;&#x0440;&#x0438;&#x0435; &#x0412;&#x0421;&#x0418;&#x0427;&#x041A;&#x041E;. &#x041D;&#x044F;&#x043C;&#x0430; &#x0432;&#x0440;&#x044A;&#x0449;&#x0430;&#x043D;&#x0435;!</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="modal-nuclear-2-cancel">
+          &#x274C; &#x041E;&#x0442;&#x043A;&#x0430;&#x0436;&#x0438; / Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="modal-nuclear-2-ok">
+          &#x1F525; &#x041F;&#x0440;&#x043E;&#x0434;&#x044A;&#x043B;&#x0436;&#x0438; / Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nuclear Delete — Step 3 Modal (type DELETE) -->
+  <div id="modal-nuclear-3" class="modal-overlay confirm-modal">
+    <div class="modal-content">
+      <button type="button" class="modal-close" id="modal-nuclear-3-close">&times;</button>
+      <div class="confirm-icon">&#x2622;&#xFE0F;</div>
+      <h3 class="modal-title">&#x041F;&#x043E;&#x0441;&#x043B;&#x0435;&#x0434;&#x0435;&#x043D; &#x0448;&#x0430;&#x043D;&#x0441;! / Last chance!</h3>
+      <p class="confirm-text">&#x041D;&#x0430;&#x043F;&#x0438;&#x0448;&#x0438; <strong>DELETE</strong> &#x0437;&#x0430; &#x043F;&#x043E;&#x0442;&#x0432;&#x044A;&#x0440;&#x0436;&#x0434;&#x0435;&#x043D;&#x0438;&#x0435;:</p>
+      <div class="form-group" style="margin-bottom:var(--space-md);">
+        <input type="text" id="nuclear-confirm-input" class="form-input" placeholder="DELETE" style="text-align:center;text-transform:uppercase;letter-spacing:3px;">
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="modal-nuclear-3-cancel">
+          &#x274C; &#x041E;&#x0442;&#x043A;&#x0430;&#x0436;&#x0438; / Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="modal-nuclear-3-ok" disabled>
+          &#x1F4A5; &#x0418;&#x0417;&#x0422;&#x0420;&#x0418;&#x0419; / DELETE ALL
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Celebration Overlay -->
+  <div id="success-overlay" class="save-celebration" style="display:none;"></div>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="../js/content.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/cloudinary.js"></script>
+  <script src="../js/emailjs.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>

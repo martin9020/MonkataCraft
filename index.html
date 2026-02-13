@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkaCraft - Home</title>
+  <meta name="description" content="MonkaCraft — Gaming hub on MonkaS. Minecraft & Roblox adventures, streams, videos, and more!">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particles" id="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <!-- Cursor torch glow (desktop only) -->
+  <div class="cursor-glow"></div>
+
+  <!-- Header — injected by app.js -->
+  <header id="header"></header>
+
+  <!-- Main content -->
+  <main id="content" class="container page-home">
+
+    <!-- 1. Hero Section -->
+    <section class="hero">
+      <img src="assets/logo.svg" alt="MonkaCraft" class="hero-logo animate-in">
+      <h1 class="hero-tagline animate-in">🎮 Светът на Монката — Minecraft &amp; Roblox Adventures! 🚀</h1>
+      <p class="hero-subtitle animate-in">Welcome to MonkaS's Gaming Universe</p>
+      <div class="hero-live" id="live-indicator" style="display:none">
+        <span class="dot"></span>
+        <span>LIVE NOW!</span>
+      </div>
+    </section>
+
+    <!-- 2. Latest Content -->
+    <section class="section latest-content animate-in">
+      <h2 class="mb-xl" style="text-align:center; font-family: var(--font-heading); font-size: var(--fs-sm); color: var(--color-primary); text-shadow: 0 0 15px rgba(0,255,136,0.4);">Последно / Latest</h2>
+      <div class="grid grid-3" id="latest-cards">
+        <!-- JS populates 3 cards: latest video, screenshot, post -->
+      </div>
+    </section>
+
+    <!-- 3. About Me -->
+    <section class="section about-section animate-in">
+      <div class="about-card">
+        <div style="font-size:3rem; margin-bottom: var(--space-md);">🧑‍💻</div>
+        <p style="font-size: var(--fs-lg); margin-bottom: var(--space-md); line-height:1.6;">
+          Аз съм Симеон, на 9 години. Обичам Minecraft и Roblox! 🎮
+        </p>
+        <div style="display:flex; justify-content:center; gap: var(--space-lg); flex-wrap:wrap; margin-bottom: var(--space-lg);">
+          <span class="tag tag-minecraft">⛏️ Minecraft</span>
+          <span class="tag tag-roblox">🎮 Roblox</span>
+        </div>
+        <div class="stats-row" id="stats-counter">
+          <div class="stat-item">
+            <span class="stat-value" data-target="0" id="stat-videos">0</span>
+            <span class="stat-label">📹 Videos</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" data-target="0" id="stat-screenshots">0</span>
+            <span class="stat-label">🖼️ Screenshots</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" data-target="0" id="stat-posts">0</span>
+            <span class="stat-label">📝 Posts</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" style="color: var(--color-accent); text-shadow: 0 0 15px rgba(255,51,136,0.4);">∞</span>
+            <span class="stat-label">🚀 Adventures</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Quick Links -->
+    <section class="section animate-in">
+      <div class="quick-links">
+        <a href="pages/streams.html" class="quick-link" style="border-color: rgba(255,34,68,0.3);">
+          <span class="link-icon">🎬</span>
+          <span class="link-label">Streams</span>
+        </a>
+        <a href="pages/videos.html" class="quick-link" style="border-color: rgba(0,255,136,0.3);">
+          <span class="link-icon">📹</span>
+          <span class="link-label">Videos</span>
+        </a>
+        <a href="pages/gallery.html" class="quick-link" style="border-color: rgba(0,212,255,0.3);">
+          <span class="link-icon">🖼️</span>
+          <span class="link-label">Gallery</span>
+        </a>
+        <a href="pages/blog.html" class="quick-link" style="border-color: rgba(255,51,136,0.3);">
+          <span class="link-icon">📝</span>
+          <span class="link-label">Blog</span>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer — injected by app.js -->
+  <footer id="footer"></footer>
+
+  <!-- Scripts -->
+  <script src="js/content.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Page-specific JS for Homepage -->
+  <script>
+  (function () {
+    'use strict';
+
+    /**
+     * Extract a YouTube video ID from a URL string.
+     * Returns the 11-character ID or null.
+     */
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      var match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|v\/))([A-Za-z0-9_-]{11})/);
+      return match ? match[1] : null;
+    }
+
+    /**
+     * Return the CSS class suffix for a gameTag value.
+     */
+    function tagClass(gameTag) {
+      var tag = (gameTag || '').toLowerCase();
+      if (tag === 'minecraft') return 'tag-minecraft';
+      if (tag === 'roblox') return 'tag-roblox';
+      return 'tag-other';
+    }
+
+    /**
+     * Format a date string as a short human-readable date.
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('bg-BG', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    /**
+     * Build a thumbnail URL for a content entry.
+     * Uses YouTube thumbnail for YouTube URLs, otherwise uses the entry thumbnail or url.
+     */
+    function getThumbnail(entry) {
+      if (entry.thumbnail) return entry.thumbnail;
+      var ytId = extractYouTubeId(entry.url);
+      if (ytId) return 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg';
+      return entry.url || '';
+    }
+
+    /**
+     * Build a link to the appropriate content page for this entry type.
+     */
+    function getViewLink(entry) {
+      if (entry.type === 'video') return 'pages/videos.html';
+      if (entry.type === 'screenshot') return 'pages/gallery.html';
+      if (entry.type === 'post') return 'pages/blog.html';
+      return '#';
+    }
+
+    /**
+     * Strip HTML tags from a string and truncate to maxLen characters.
+     */
+    function stripAndTruncate(html, maxLen) {
+      if (!html) return '';
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      var text = tmp.textContent || tmp.innerText || '';
+      if (text.length > maxLen) {
+        return text.substring(0, maxLen) + '...';
+      }
+      return text;
+    }
+
+    /**
+     * Build the HTML for a single latest-content card.
+     */
+    function buildCard(entry) {
+      var thumb = getThumbnail(entry);
+      var link = getViewLink(entry);
+      var typeLabel = entry.type === 'video' ? '📹 Video' : entry.type === 'screenshot' ? '🖼️ Screenshot' : '📝 Post';
+      var excerpt = entry.description || stripAndTruncate(entry.content || '', 100);
+
+      var html =
+        '<article class="card">' +
+          (thumb
+            ? '<img src="' + thumb + '" alt="' + (entry.title || '').replace(/"/g, '&quot;') + '" class="card-image" loading="lazy">'
+            : '') +
+          '<h3 class="card-title">' + (entry.title || 'Untitled') + '</h3>' +
+          '<div class="card-meta">' +
+            '<span class="tag ' + tagClass(entry.gameTag) + '">' + (entry.gameTag || '') + '</span> ' +
+            '<span>' + formatDate(entry.date) + '</span>' +
+          '</div>' +
+          '<p class="card-excerpt">' + typeLabel + ' — ' + excerpt + '</p>' +
+          '<a href="' + link + '" class="btn btn-sm btn-ghost mt-md" style="width:100%;">View &rarr;</a>' +
+        '</article>';
+
+      return html;
+    }
+
+    /**
+     * Render the 3 latest content cards into the #latest-cards grid.
+     */
+    function renderLatestCards() {
+      var container = document.getElementById('latest-cards');
+      if (!container || !window.ContentStore) return;
+
+      var latestVideo = ContentStore.getLatest('video', 1);
+      var latestScreenshot = ContentStore.getLatest('screenshot', 1);
+      var latestPost = ContentStore.getLatest('post', 1);
+
+      var cards = [];
+      if (latestVideo.length > 0) cards.push(buildCard(latestVideo[0]));
+      if (latestScreenshot.length > 0) cards.push(buildCard(latestScreenshot[0]));
+      if (latestPost.length > 0) cards.push(buildCard(latestPost[0]));
+
+      if (cards.length === 0) {
+        container.innerHTML =
+          '<div class="empty-state" style="grid-column: 1/-1;">' +
+            '<div class="empty-icon">🎮</div>' +
+            '<p>Няма съдържание все още / No content yet!</p>' +
+          '</div>';
+        return;
+      }
+
+      container.innerHTML = cards.join('');
+    }
+
+    /**
+     * Animate a stat counter from 0 to its target value.
+     */
+    function animateCounter(el, target, duration) {
+      var start = 0;
+      var startTime = null;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        // Ease-out quad
+        var eased = 1 - (1 - progress) * (1 - progress);
+        var current = Math.floor(eased * target);
+        el.textContent = current;
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          el.textContent = target;
+        }
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    /**
+     * Set up animated stat counters via IntersectionObserver.
+     * They count up when the stats row scrolls into view.
+     */
+    function initStatsCounters() {
+      if (!window.ContentStore) return;
+      var stats = ContentStore.getStats();
+
+      var videoEl = document.getElementById('stat-videos');
+      var screenshotEl = document.getElementById('stat-screenshots');
+      var postEl = document.getElementById('stat-posts');
+
+      if (videoEl) videoEl.setAttribute('data-target', stats.videos);
+      if (screenshotEl) screenshotEl.setAttribute('data-target', stats.screenshots);
+      if (postEl) postEl.setAttribute('data-target', stats.posts);
+
+      var statsRow = document.getElementById('stats-counter');
+      if (!statsRow) return;
+
+      if ('IntersectionObserver' in window) {
+        var observed = false;
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting && !observed) {
+              observed = true;
+              if (videoEl) animateCounter(videoEl, stats.videos, 1200);
+              if (screenshotEl) animateCounter(screenshotEl, stats.screenshots, 1200);
+              if (postEl) animateCounter(postEl, stats.posts, 1200);
+              observer.unobserve(statsRow);
+            }
+          });
+        }, { threshold: 0.3 });
+
+        observer.observe(statsRow);
+      } else {
+        // Fallback — just set values
+        if (videoEl) videoEl.textContent = stats.videos;
+        if (screenshotEl) screenshotEl.textContent = stats.screenshots;
+        if (postEl) postEl.textContent = stats.posts;
+      }
+    }
+
+    /**
+     * Show or hide the LIVE NOW indicator based on ContentStore.isLive().
+     */
+    function updateLiveIndicator() {
+      var indicator = document.getElementById('live-indicator');
+      if (!indicator || !window.ContentStore) return;
+      if (ContentStore.isLive()) {
+        indicator.style.display = '';
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+
+    // Listen for the contentReady event dispatched by app.js after ContentStore.init()
+    window.addEventListener('contentReady', function () {
+      renderLatestCards();
+      initStatsCounters();
+      updateLiveIndicator();
+    });
+  })();
+  </script>
+</body>
+</html>
