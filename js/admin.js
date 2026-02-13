@@ -52,12 +52,12 @@
   // B) UTILITY HELPERS
   // =====================================================================
 
-  /** Return today's date as YYYY-MM-DD. */
+  /** Return today's date as dd/mm/yy. */
   function todayISO() {
     var d = new Date();
-    return d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
+    return String(d.getDate()).padStart(2, '0') + '/' +
+      String(d.getMonth() + 1).padStart(2, '0') + '/' +
+      String(d.getFullYear()).slice(-2);
   }
 
   /** Safely get a DOM element by ID. */
@@ -237,7 +237,7 @@
     var dateInputs = ['video-date', 'screenshot-date', 'post-date', 'stream-date'];
     dateInputs.forEach(function (id) {
       var el = $(id);
-      if (el && !el.value) el.value = today;
+      if (el) el.value = today;
     });
   }
 
@@ -1183,12 +1183,11 @@
       var formData = new FormData();
       formData.append('file', blob, 'monkacraft_content.json');
       formData.append('upload_preset', uploadPreset);
-      formData.append('resource_type', 'raw');
       formData.append('public_id', 'monkacraft_content');
 
       showSuccess('\u2601\uFE0F \u041A\u0430\u0447\u0432\u0430\u043C... / Uploading...');
 
-      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
+      fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/auto/upload', {
         method: 'POST',
         body: formData
       })

@@ -127,10 +127,9 @@
     var formData = new FormData();
     formData.append('file', blob, 'monkacraft_content.json');
     formData.append('upload_preset', uploadPreset);
-    formData.append('resource_type', 'raw');
     formData.append('public_id', 'monkacraft_content');
 
-    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload', {
+    fetch('https://api.cloudinary.com/v1_1/' + cloudName + '/auto/upload', {
       method: 'POST',
       body: formData
     })
