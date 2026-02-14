@@ -1085,16 +1085,12 @@
     $('settings-save-cloudinary').addEventListener('click', function () {
       var cloudName = $('settings-cloud-name').value.trim();
       var uploadPreset = $('settings-upload-preset').value.trim();
-      var apiKey = $('settings-api-key').value.trim();
-      var apiSecret = $('settings-api-secret').value.trim();
       if (!cloudName || !uploadPreset) {
         showError('\u041C\u043E\u043B\u044F \u043F\u043E\u043F\u044A\u043B\u043D\u0438 \u0434\u0432\u0435\u0442\u0435 \u043F\u043E\u043B\u0435\u0442\u0430! / Please fill both fields!');
         return;
       }
       localStorage.setItem('monkacraft_cloud_name', cloudName);
       localStorage.setItem('monkacraft_upload_preset', uploadPreset);
-      if (apiKey) localStorage.setItem('monkacraft_api_key', apiKey);
-      if (apiSecret) localStorage.setItem('monkacraft_api_secret', apiSecret);
       $('settings-cloudinary-status').innerHTML = '\u{1F7E2} \u0421\u0432\u044A\u0440\u0437\u0430\u043D / Connected';
       $('settings-cloudinary-status').style.color = 'var(--color-primary)';
       showSuccess('\u2601\uFE0F Cloudinary \u0437\u0430\u043F\u0430\u0437\u0435\u043D\u043E! / Cloudinary saved!');
@@ -1186,10 +1182,11 @@
     // every time, keeping the URL stable. Requires API Key + API Secret.
     // Falls back to unsigned upload (timestamped name) if no API credentials.
     $('settings-cloud-backup').addEventListener('click', async function () {
-      var cloudName = localStorage.getItem('monkacraft_cloud_name');
-      var uploadPreset = localStorage.getItem('monkacraft_upload_preset');
-      var apiKey = localStorage.getItem('monkacraft_api_key');
-      var apiSecret = localStorage.getItem('monkacraft_api_secret');
+      var secrets = window.MONKACRAFT_SECRETS || {};
+      var cloudName = secrets.cloudName || localStorage.getItem('monkacraft_cloud_name');
+      var uploadPreset = secrets.uploadPreset || localStorage.getItem('monkacraft_upload_preset');
+      var apiKey = secrets.apiKey || '';
+      var apiSecret = secrets.apiSecret || '';
 
       if (!cloudName) {
         showError('\u274C \u041F\u044A\u0440\u0432\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0439 Cloudinary! / Configure Cloudinary first!');
@@ -1218,12 +1215,11 @@
           var publicId = 'monkacraft_content';
           var timestamp = Math.floor(Date.now() / 1000);
           // Parameters must be sorted alphabetically for signature
-          var paramsToSign = 'invalidate=true&overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp;
+          var paramsToSign = 'overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp;
           var signature = await sha1Hex(paramsToSign + apiSecret);
 
           formData.append('public_id', publicId);
           formData.append('overwrite', 'true');
-          formData.append('invalidate', 'true');
           formData.append('timestamp', timestamp);
           formData.append('api_key', apiKey);
           formData.append('signature', signature);
@@ -1244,6 +1240,7 @@
           body: formData
         });
         var data = await res.json();
+        alert('Cloudinary response: ' + JSON.stringify(data).substring(0, 300));
 
         btn.disabled = false;
         btn.innerHTML = '\u2601\uFE0F \u041A\u0430\u0447\u0438 \u0432 Cloudinary (Cloud Backup)';
@@ -1261,6 +1258,7 @@
       } catch (err) {
         btn.disabled = false;
         btn.innerHTML = '\u2601\uFE0F \u041A\u0430\u0447\u0438 \u0432 Cloudinary (Cloud Backup)';
+        alert('Cloud Backup Error: ' + err.message);
         showError('\u274C \u0413\u0440\u0435\u0448\u043A\u0430: ' + err.message);
       }
     });
@@ -1307,28 +1305,45 @@
     // Migrate any old EmailJS keys first
     migrateEmailJSKeys();
 
-    // Cloudinary
-    var cloudName = localStorage.getItem('monkacraft_cloud_name') || '';
-    var uploadPreset = localStorage.getItem('monkacraft_upload_preset') || '';
-    var apiKey = localStorage.getItem('monkacraft_api_key') || '';
-    var apiSecret = localStorage.getItem('monkacraft_api_secret') || '';
+    // Cloudinary — auto-populate from secrets.js if available
+    var secrets = window.MONKACRAFT_SECRETS || {};
+    var cloudName = secrets.cloudName || localStorage.getItem('monkacraft_cloud_name') || '';
+    var uploadPreset = secrets.uploadPreset || localStorage.getItem('monkacraft_upload_preset') || '';
+    // Auto-save secrets to localStorage so other parts of the app can use them
+    if (secrets.cloudName) localStorage.setItem('monkacraft_cloud_name', secrets.cloudName);
+    if (secrets.uploadPreset) localStorage.setItem('monkacraft_upload_preset', secrets.uploadPreset);
     $('settings-cloud-name').value = cloudName;
     $('settings-upload-preset').value = uploadPreset;
-    $('settings-api-key').value = apiKey;
-    $('settings-api-secret').value = apiSecret;
     if (cloudName && uploadPreset) {
       $('settings-cloudinary-status').innerHTML = '\u{1F7E2} \u0421\u0432\u044A\u0440\u0437\u0430\u043D / Connected';
       $('settings-cloudinary-status').style.color = 'var(--color-primary)';
     }
 
-    // EmailJS — read from EmailService if available, otherwise direct localStorage
-    var emailConfig = (typeof EmailService !== 'undefined' && EmailService.getConfig)
-      ? EmailService.getConfig()
-      : {
-          serviceID:  localStorage.getItem('monkacraft_emailjs_service_id') || '',
-          templateID: localStorage.getItem('monkacraft_emailjs_template_id') || '',
-          publicKey:  localStorage.getItem('monkacraft_emailjs_public_key') || ''
-        };
+    // EmailJS — auto-populate from secrets.js, then EmailService, then localStorage
+    var emailConfig;
+    if (secrets.emailServiceId) {
+      emailConfig = {
+        serviceID: secrets.emailServiceId,
+        templateID: secrets.emailTemplateId || '',
+        publicKey: secrets.emailPublicKey || ''
+      };
+      // Save to localStorage so EmailService can use them
+      if (typeof EmailService !== 'undefined' && EmailService.saveConfig) {
+        EmailService.saveConfig(emailConfig.serviceID, emailConfig.templateID, emailConfig.publicKey);
+      } else {
+        localStorage.setItem('monkacraft_emailjs_service_id', emailConfig.serviceID);
+        localStorage.setItem('monkacraft_emailjs_template_id', emailConfig.templateID);
+        localStorage.setItem('monkacraft_emailjs_public_key', emailConfig.publicKey);
+      }
+    } else if (typeof EmailService !== 'undefined' && EmailService.getConfig) {
+      emailConfig = EmailService.getConfig();
+    } else {
+      emailConfig = {
+        serviceID:  localStorage.getItem('monkacraft_emailjs_service_id') || '',
+        templateID: localStorage.getItem('monkacraft_emailjs_template_id') || '',
+        publicKey:  localStorage.getItem('monkacraft_emailjs_public_key') || ''
+      };
+    }
     $('settings-emailjs-service').value = emailConfig.serviceID;
     $('settings-emailjs-template').value = emailConfig.templateID;
     $('settings-emailjs-key').value = emailConfig.publicKey;

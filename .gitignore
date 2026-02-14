@@ -16,6 +16,7 @@ CLAUDE.md
 
 # Secrets
 .env
+js/secrets.js
 
 # OS files
 Thumbs.db
